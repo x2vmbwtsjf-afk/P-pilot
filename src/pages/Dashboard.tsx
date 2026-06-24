@@ -2,19 +2,25 @@ import { useEffect, useState } from 'react';
 import { getRacks, getDevices, getCables } from '../db';
 import type { Rack, Device, Cable } from '../types';
 import { navigate } from '../App';
+import CreateQRModal from '../components/CreateQRModal';
+import ScanQRModal from '../components/ScanQRModal';
 
 export default function Dashboard() {
-  const [racks, setRacks] = useState<Rack[]>([]);
+  const [racks, setRacks]     = useState<Rack[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [cables, setCables] = useState<Cable[]>([]);
+  const [cables, setCables]   = useState<Cable[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showScan, setShowScan]     = useState(false);
+  const [prefillId, setPrefillId]   = useState<string | undefined>();
 
-  useEffect(() => {
+  const load = () =>
     Promise.all([getRacks(), getDevices(), getCables()]).then(([r, d, c]) => {
       setRacks(r ?? []);
       setDevices(d ?? []);
       setCables(c ?? []);
     });
-  }, []);
+
+  useEffect(() => { load(); }, []);
 
   const online  = devices.filter(d => d.status === 'online').length;
   const offline = devices.filter(d => d.status === 'offline').length;
@@ -34,20 +40,87 @@ export default function Dashboard() {
 
   const recentDevices = [...devices].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
 
+  function openAddNew(id: string) {
+    setPrefillId(id);
+    setShowCreate(true);
+  }
+
   return (
     <div className="fade-in">
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Dashboard</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Data center infrastructure overview</p>
+      {/* ─── Hero section ─── */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(0,212,255,0.06) 0%, rgba(0,255,148,0.04) 100%)',
+        border: '1px solid rgba(0,212,255,0.15)',
+        borderRadius: 16,
+        padding: '1.75rem 2rem',
+        marginBottom: '1.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1.25rem',
+      }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.02em' }}>
+            P-Pilot Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            Data center infrastructure management
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+          {/* Create QR button */}
+          <button
+            onClick={() => { setPrefillId(undefined); setShowCreate(true); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.75rem 1.4rem',
+              borderRadius: 10,
+              border: '1.5px solid rgba(0,255,148,0.5)',
+              background: 'linear-gradient(135deg, rgba(0,255,148,0.15), rgba(0,255,148,0.05))',
+              color: '#00FF94',
+              fontWeight: 700, fontSize: '0.9rem',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(0,255,148,0.25)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+            onMouseOut={e  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
+          >
+            <QRCreateIcon size={18} />
+            Create QR
+          </button>
+
+          {/* Scan QR button */}
+          <button
+            onClick={() => setShowScan(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.75rem 1.4rem',
+              borderRadius: 10,
+              border: '1.5px solid rgba(0,212,255,0.5)',
+              background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.05))',
+              color: '#00D4FF',
+              fontWeight: 700, fontSize: '0.9rem',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(0,212,255,0.25)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+            onMouseOut={e  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
+          >
+            <ScanIcon size={18} />
+            Scan QR
+          </button>
+        </div>
       </div>
 
+      {/* ─── Alerts ─── */}
       {alerts.length > 0 && (
-        <div style={{ background: 'rgba(255,183,0,0.1)', border: '1px solid rgba(255,183,0,0.3)', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ background: 'rgba(255,183,0,0.08)', border: '1px solid rgba(255,183,0,0.3)', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.8rem', color: '#ffb700', fontWeight: 700 }}>⚠ Alerts</span>
           {alerts.map(a => <span key={a} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{a}</span>)}
         </div>
       )}
 
+      {/* ─── Stat cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <StatCard icon="🖥️" label="Total Devices" value={devices.length} sub={`${online} online`}   color="#00D4FF" onClick={() => navigate('devices')} />
         <StatCard icon="🗄️" label="Racks"          value={racks.length}   sub={`${totalU}U total`}  color="#00FF94" onClick={() => navigate('racks')} />
@@ -56,6 +129,7 @@ export default function Dashboard() {
         <StatCard icon="📊" label="Rack Fill"       value={totalU > 0 ? `${Math.round(usedU / totalU * 100)}%` : '—'} sub={`${usedU}/${totalU}U`} color="#ffb700" onClick={() => navigate('racks')} />
       </div>
 
+      {/* ─── Cards row ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -88,8 +162,7 @@ export default function Dashboard() {
               { label: 'Add Device',   icon: '🖥️', target: 'devices'   },
               { label: 'Add Rack',     icon: '🗄️', target: 'racks'     },
               { label: 'Add Cable',    icon: '🔌', target: 'cables'    },
-              { label: 'Scan QR Code', icon: '📷', target: 'scanner'   },
-              { label: 'Generate QR',  icon: '🏷️', target: 'qr-studio' },
+              { label: 'QR Studio',    icon: '🏷️', target: 'qr-studio' },
             ].map(({ label, icon, target }) => (
               <button key={label} className="btn-secondary" style={{ justifyContent: 'flex-start', width: '100%' }} onClick={() => navigate(target)}>
                 <span>{icon}</span> {label}
@@ -124,6 +197,21 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* ─── Modals ─── */}
+      {showCreate && (
+        <CreateQRModal
+          prefillId={prefillId}
+          onClose={() => { setShowCreate(false); setPrefillId(undefined); }}
+          onSaved={(_kind, _id) => { setShowCreate(false); setPrefillId(undefined); load(); }}
+        />
+      )}
+      {showScan && (
+        <ScanQRModal
+          onClose={() => setShowScan(false)}
+          onAddNew={(id) => { setShowScan(false); openAddNew(id); }}
+        />
+      )}
     </div>
   );
 }
@@ -149,4 +237,23 @@ function StatusBadge({ status }: { status: string }) {
 
 function Empty({ text }: { text: string }) {
   return <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{text}</div>;
+}
+
+function QRCreateIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/>
+      <path d="M16 16h2v2h-2z"/><path d="M20 16v2"/><path d="M16 20h4"/><path d="M12 3v4"/><path d="M12 12v.01"/><path d="M3 12h4"/>
+    </svg>
+  );
+}
+
+function ScanIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+    </svg>
+  );
 }
