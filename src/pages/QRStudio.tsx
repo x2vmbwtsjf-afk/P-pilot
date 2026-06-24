@@ -94,21 +94,39 @@ export default function QRStudio() {
     let extras = '';
     if (selected.kind === 'device') {
       const d = raw as Device;
-      const ip = d.ip || d.managementIp;
-      if (ip)    extras += `<div class="extra">IP: ${ip}</div>`;
-      if (d.os)  extras += `<div class="extra">OS: ${d.os}</div>`;
+      if (d.type === 'server') {
+        if (d.hostname) extras += `<div class="extra">Host: ${d.hostname}</div>`;
+        const ip = d.ipAddress ?? d.ip;
+        if (ip) extras += `<div class="extra">IP: ${ip}</div>`;
+        if (d.os) extras += `<div class="extra">OS: ${d.os}</div>`;
+      } else if (NETWORK_TYPES.has(d.type)) {
+        if (d.managementIp) extras += `<div class="extra">Mgmt IP: ${d.managementIp}</div>`;
+        if (d.ports)  extras += `<div class="extra">Ports: ${d.ports}</div>`;
+        if (d.vlan)   extras += `<div class="extra conn">VLAN: ${d.vlan}</div>`;
+      } else if (d.type === 'ups') {
+        if (d.capacityVA) extras += `<div class="extra">Capacity: ${d.capacityVA}VA</div>`;
+        const batt = d.batteryLastReplaced ?? d.batteryReplaced;
+        if (batt) extras += `<div class="extra">Battery: ${batt}</div>`;
+      }
       if (d.tech) extras += `<div class="extra">Tech: ${d.tech}</div>`;
-      if (d.capacityVA) extras += `<div class="extra">Capacity: ${d.capacityVA}VA</div>`;
     } else if (selected.kind === 'rack') {
       const r = raw as Rack;
-      extras += `<div class="extra">${r.location}${r.row ? ` · Row ${r.row}` : ''} · ${r.totalU}U</div>`;
+      if (r.rackNumber) extras += `<div class="extra">Rack #${r.rackNumber}</div>`;
+      const roomLine = r.room ? `${r.room}${r.location ? ` (${r.location})` : ''}` : r.location;
+      extras += `<div class="extra">${roomLine}${r.row ? ` · Row ${r.row}` : ''} · ${r.totalU}U</div>`;
       if (r.tech) extras += `<div class="extra">Tech: ${r.tech}</div>`;
     } else if (selected.kind === 'cable') {
       const c = raw as Cable;
-      const near = c.nearEnd || c.fromPort || '';
-      const far  = c.farEnd  || c.toPort   || '';
-      if (near) extras += `<div class="extra conn">Near: ${near}</div>`;
-      if (far)  extras += `<div class="extra conn">Far: ${far}</div>`;
+      if (c.labelName) extras += `<div class="extra conn">${c.labelName}</div>`;
+      else {
+        const near = c.nearEnd || c.fromPort || '';
+        const far  = c.farEnd  || c.toPort   || '';
+        if (near && far) extras += `<div class="extra conn">${near} → ${far}</div>`;
+        else {
+          if (near) extras += `<div class="extra conn">Near: ${near}</div>`;
+          if (far)  extras += `<div class="extra conn">Far: ${far}</div>`;
+        }
+      }
       if (c.tech) extras += `<div class="extra">Tech: ${c.tech}</div>`;
     }
 
