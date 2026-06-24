@@ -144,29 +144,30 @@ export default function Devices() {
 
 function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | null; racks: Rack[]; onClose: () => void; onSave: (d: Device) => void }) {
   const [form, setForm] = useState({
-    name:            initial?.name            ?? '',
-    type:            initial?.type            ?? 'server' as DeviceType,
-    serial:          initial?.serial          ?? '',
-    rackId:          initial?.rackId          ?? '',
-    uPosition:       initial?.uPosition?.toString() ?? '',
-    uHeight:         initial?.uHeight         ?? 1,
-    status:          initial?.status          ?? 'online' as DeviceStatus,
-    manufacturer:    initial?.manufacturer    ?? '',
-    model:           initial?.model           ?? '',
-    tech:            initial?.tech            ?? '',
+    name:                initial?.name            ?? '',
+    hostname:            initial?.hostname        ?? '',
+    type:                initial?.type            ?? 'server' as DeviceType,
+    serial:              initial?.serial          ?? '',
+    rackId:              initial?.rackId          ?? '',
+    uPosition:           initial?.uPosition?.toString() ?? '',
+    uSize:               (initial?.uSize ?? initial?.uHeight ?? 1).toString(),
+    status:              initial?.status          ?? 'online' as DeviceStatus,
+    manufacturer:        initial?.manufacturer    ?? '',
+    model:               initial?.model           ?? '',
+    tech:                initial?.tech            ?? '',
     // server
-    ip:              initial?.ip              ?? '',
-    os:              initial?.os              ?? '',
+    ipAddress:           initial?.ipAddress ?? initial?.ip ?? '',
+    os:                  initial?.os              ?? '',
     // network
-    managementIp:    initial?.managementIp    ?? '',
-    ports:           initial?.ports?.toString()  ?? '',
-    vlan:            initial?.vlan            ?? '',
+    managementIp:        initial?.managementIp    ?? '',
+    ports:               initial?.ports?.toString()  ?? '',
+    vlan:                initial?.vlan            ?? '',
     // ups
-    capacityVA:      initial?.capacityVA?.toString() ?? '',
-    batteryReplaced: initial?.batteryReplaced ?? '',
+    capacityVA:          initial?.capacityVA?.toString() ?? '',
+    batteryLastReplaced: initial?.batteryLastReplaced ?? initial?.batteryReplaced ?? '',
     // other
-    category:        initial?.category        ?? '',
-    notes:           initial?.notes           ?? '',
+    category:            initial?.category        ?? '',
+    notes:               initial?.notes           ?? '',
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -178,25 +179,30 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
     e.preventDefault();
     if (!form.name.trim()) return;
     const now = Date.now();
+    const ipVal = (group === 'server' || group === 'other') ? (form.ipAddress.trim() || undefined) : undefined;
     onSave({
       id: initial?.id ?? generateId(),
       name: form.name.trim(),
+      hostname:     group === 'server' ? (form.hostname.trim() || undefined) : undefined,
       type: form.type as DeviceType,
       serial: form.serial.trim(),
       rackId: form.rackId || undefined,
       uPosition: form.uPosition ? Number(form.uPosition) : undefined,
-      uHeight: Number(form.uHeight) || 1,
+      uHeight: Number(form.uSize) || 1,
+      uSize:   Number(form.uSize) || 1,
       status: form.status as DeviceStatus,
       manufacturer: form.manufacturer.trim() || undefined,
       model:        form.model.trim()        || undefined,
       tech:         form.tech.trim()         || undefined,
-      ip:           (group === 'server' || group === 'other') ? (form.ip.trim() || undefined) : undefined,
+      ip:        ipVal,
+      ipAddress: ipVal,
       os:           group === 'server'  ? (form.os.trim()              || undefined) : undefined,
       managementIp: group === 'network' ? (form.managementIp.trim()   || undefined) : undefined,
       ports:        group === 'network' ? (Number(form.ports) || undefined) : undefined,
       vlan:         group === 'network' ? (form.vlan.trim()            || undefined) : undefined,
       capacityVA:   group === 'ups'     ? (Number(form.capacityVA) || undefined) : undefined,
-      batteryReplaced: group === 'ups'  ? (form.batteryReplaced.trim() || undefined) : undefined,
+      batteryReplaced:     group === 'ups' ? (form.batteryLastReplaced.trim() || undefined) : undefined,
+      batteryLastReplaced: group === 'ups' ? (form.batteryLastReplaced.trim() || undefined) : undefined,
       category:     group === 'other'   ? (form.category.trim()        || undefined) : undefined,
       notes:        form.notes.trim()   || undefined,
       createdAt: initial?.createdAt ?? now,
@@ -233,13 +239,14 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
               </select>
             </Field>
             <Field label="U Position"><input className="input" type="number" min={1} value={form.uPosition} onChange={set('uPosition')} placeholder="e.g. 10" /></Field>
-            <Field label="U Height (U)"><input className="input" type="number" min={1} max={20} value={form.uHeight} onChange={set('uHeight')} /></Field>
+            <Field label="U Size (U)"><input className="input" type="number" min={1} max={20} value={form.uSize} onChange={set('uSize')} /></Field>
             <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
 
             {/* ─── Server-specific ─── */}
             {group === 'server' && <>
-              <Field label="IP Address"><input className="input" value={form.ip} onChange={set('ip')} placeholder="10.0.1.10" /></Field>
-              <Field label="OS"><input className="input" value={form.os} onChange={set('os')} placeholder="Ubuntu 22.04, ESXi 8…" /></Field>
+              <Field label="Hostname"><input className="input" value={form.hostname} onChange={set('hostname')} placeholder="e.g. web-srv-01" /></Field>
+              <Field label="IP Address"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="10.0.1.10" /></Field>
+              <Field label="OS" style={{ gridColumn: 'span 2' }}><input className="input" value={form.os} onChange={set('os')} placeholder="Ubuntu 22.04, ESXi 8…" /></Field>
             </>}
 
             {/* ─── Network-specific (switch / router / firewall) ─── */}
@@ -252,13 +259,13 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
             {/* ─── UPS-specific ─── */}
             {group === 'ups' && <>
               <Field label="Capacity (VA)"><input className="input" type="number" min={0} value={form.capacityVA} onChange={set('capacityVA')} placeholder="e.g. 3000" /></Field>
-              <Field label="Battery Last Replaced"><input className="input" type="date" value={form.batteryReplaced} onChange={set('batteryReplaced')} /></Field>
+              <Field label="Battery Last Replaced"><input className="input" type="date" value={form.batteryLastReplaced} onChange={set('batteryLastReplaced')} /></Field>
             </>}
 
             {/* ─── Other/custom ─── */}
             {group === 'other' && <>
               <Field label="Category / Type"><input className="input" value={form.category} onChange={set('category')} placeholder="e.g. KVM, PDU…" /></Field>
-              <Field label="IP / Location"><input className="input" value={form.ip} onChange={set('ip')} placeholder="IP or physical location" /></Field>
+              <Field label="IP / Location"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="IP or physical location" /></Field>
             </>}
 
           </div>

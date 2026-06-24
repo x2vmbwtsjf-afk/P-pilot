@@ -16,14 +16,16 @@ interface ListItem {
 }
 
 function deviceSub(d: Device): string {
-  if (d.type === 'server')             return [d.manufacturer, d.model, d.ip ? `IP: ${d.ip}` : null, d.os].filter(Boolean).join(' · ');
-  if (NETWORK_TYPES.has(d.type))       return [d.manufacturer, d.model, d.managementIp ? `Mgmt: ${d.managementIp}` : null, d.ports ? `${d.ports} ports` : null].filter(Boolean).join(' · ');
-  if (d.type === 'ups')                return [d.manufacturer, d.model, d.capacityVA ? `${d.capacityVA}VA` : null].filter(Boolean).join(' · ');
+  const ip = d.ipAddress ?? d.ip;
+  if (d.type === 'server')       return [d.hostname || d.manufacturer, d.model, ip ? `IP: ${ip}` : null, d.os].filter(Boolean).join(' · ');
+  if (NETWORK_TYPES.has(d.type)) return [d.manufacturer, d.model, d.managementIp ? `Mgmt: ${d.managementIp}` : null, d.ports ? `${d.ports} ports` : null].filter(Boolean).join(' · ');
+  if (d.type === 'ups')          return [d.manufacturer, d.model, d.capacityVA ? `${d.capacityVA}VA` : null].filter(Boolean).join(' · ');
   return [d.type, d.serial || null].filter(Boolean).join(' · ');
 }
 
 function rackSub(r: Rack): string {
-  return [r.location, r.row ? `Row ${r.row}` : null, `${r.totalU}U`, r.manufacturer || null].filter(Boolean).join(' · ');
+  const loc = [r.room || r.location, r.row ? `Row ${r.row}` : null].filter(Boolean).join(' · ');
+  return [r.rackNumber ? `#${r.rackNumber}` : null, loc, `${r.totalU}U`, r.manufacturer || null].filter(Boolean).join(' · ');
 }
 
 function cableSub(c: Cable): string {

@@ -8,6 +8,7 @@ export interface Rack {
   id: string;
   name: string;
   location: string;
+  room?: string;
   totalU: number;
   rackNumber?: string;
   row?: string;
@@ -23,13 +24,16 @@ export interface Rack {
 export interface Device {
   id: string;
   name: string;
+  hostname?: string;
   type: DeviceType;
   serial: string;
   rackId?: string;
   uPosition?: number;
   uHeight?: number;
+  uSize?: number;
   status: DeviceStatus;
   ip?: string;
+  ipAddress?: string;
   managementIp?: string;
   manufacturer?: string;
   model?: string;
@@ -39,6 +43,7 @@ export interface Device {
   vlan?: string;
   capacityVA?: number;
   batteryReplaced?: string;
+  batteryLastReplaced?: string;
   category?: string;
   notes?: string;
   createdAt: number;
@@ -48,6 +53,7 @@ export interface Device {
 export interface Cable {
   id: string;
   label: string;
+  labelName?: string;
   type: CableType;
   lengthM: number;
   nearEnd: string;

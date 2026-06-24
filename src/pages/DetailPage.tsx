@@ -141,17 +141,18 @@ function DeviceDetail({ device, rackName, onRefresh, toast }: { device: Device; 
       </div>
 
       <Section title="Identity">
+        {isServer  && <Row label="Hostname"       value={device.hostname} />}
         <Row label="Serial Number"  value={device.serial} />
         <Row label="Manufacturer"   value={device.manufacturer} />
         <Row label="Model"          value={device.model} />
-        {isServer  && <Row label="IP Address"     value={device.ip} />}
+        {isServer  && <Row label="IP Address"     value={device.ipAddress ?? device.ip} />}
         {isServer  && <Row label="OS"             value={device.os} />}
         {isNetwork && <Row label="Management IP"  value={device.managementIp} />}
         {isNetwork && <Row label="Number of Ports" value={device.ports} />}
         {isNetwork && <Row label="VLAN / Segment" value={device.vlan} />}
         {isUPS     && <Row label="Capacity (VA)"  value={device.capacityVA} />}
-        {isUPS     && <Row label="Battery Last Replaced" value={device.batteryReplaced} />}
-        {!isServer && !isNetwork && !isUPS && device.ip && <Row label="IP / Location" value={device.ip} />}
+        {isUPS     && <Row label="Battery Last Replaced" value={device.batteryLastReplaced ?? device.batteryReplaced} />}
+        {!isServer && !isNetwork && !isUPS && (device.ipAddress || device.ip) && <Row label="IP / Location" value={device.ipAddress ?? device.ip} />}
         {device.category && <Row label="Category" value={device.category} />}
         <Row label="Tech"           value={device.tech} />
       </Section>
@@ -159,7 +160,7 @@ function DeviceDetail({ device, rackName, onRefresh, toast }: { device: Device; 
       <Section title="Location">
         <Row label="Rack"       value={rackName ?? (device.rackId || undefined)} />
         <Row label="U Position" value={device.uPosition ? `U${device.uPosition}` : undefined} />
-        <Row label="U Height"   value={device.uHeight   ? `${device.uHeight}U`   : undefined} />
+        <Row label="U Size"     value={(device.uSize ?? device.uHeight) ? `${device.uSize ?? device.uHeight}U` : undefined} />
       </Section>
 
       {device.notes && (
@@ -218,7 +219,9 @@ function RackDetail({ rack, devices, onRefresh, toast }: { rack: Rack; devices: 
       <Section title="Details">
         <Row label="Rack Number"  value={rack.rackNumber} />
         <Row label="Location"     value={rack.location} />
+        <Row label="Room"         value={rack.room} />
         <Row label="Row"          value={rack.row} />
+        <Row label="Total Units"  value={rack.totalU ? `${rack.totalU}U` : undefined} />
         <Row label="Manufacturer" value={rack.manufacturer} />
         <Row label="Power (A)"    value={rack.powerAmps} />
         <Row label="Tech"         value={rack.tech} />
@@ -284,11 +287,12 @@ function CableDetail({ cable, onRefresh, toast }: { cable: Cable; onRefresh: () 
       </div>
 
       <Section title="Cable Details">
-        <Row label="Number / ID" value={cable.cableNumber} />
-        <Row label="Type"        value={cable.type} />
-        <Row label="Length"      value={`${cable.lengthM}m`} />
-        <Row label="Color"       value={cable.color} />
-        <Row label="Tech"        value={cable.tech} />
+        <Row label="Number / ID"  value={cable.cableNumber} />
+        <Row label="Label Name"   value={cable.labelName} />
+        <Row label="Type"         value={cable.type} />
+        <Row label="Length"       value={`${cable.lengthM}m`} />
+        <Row label="Color"        value={cable.color} />
+        <Row label="Tech"         value={cable.tech} />
       </Section>
 
       <Section title="Connections">

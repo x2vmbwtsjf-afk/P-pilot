@@ -136,6 +136,7 @@ export default function Cables() {
 function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClose: () => void; onSave: (c: Cable) => void }) {
   const [form, setForm] = useState({
     label:       initial?.label                             ?? '',
+    labelName:   initial?.labelName                        ?? '',
     type:        initial?.type                              ?? 'cat6' as CableType,
     lengthM:     initial?.lengthM                          ?? 1,
     nearEnd:     initial?.nearEnd ?? initial?.fromPort     ?? '',
@@ -157,6 +158,7 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
     onSave({
       id: initial?.id ?? generateId(),
       label: form.label.trim(),
+      labelName:   form.labelName.trim()   || undefined,
       type: form.type,
       lengthM: Number(form.lengthM) || 1,
       nearEnd: form.nearEnd.trim(),
@@ -179,6 +181,7 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
             <Field label="Label / Name *"><input className="input" required value={form.label} onChange={set('label')} placeholder="e.g. CAT6 Patch #1" autoFocus /></Field>
             <Field label="Number / ID"><input className="input" value={form.cableNumber} onChange={set('cableNumber')} placeholder="CBL-001" /></Field>
+            <Field label="Label Name (print tag)" style={{ gridColumn: 'span 2' }}><input className="input" value={form.labelName} onChange={set('labelName')} placeholder="e.g. srv-01:eth0 → sw-01:Gi1/0/1" /></Field>
             <Field label="Type">
               <select className="input" value={form.type} onChange={set('type')}>
                 {CABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -211,8 +214,8 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="label">{label}</label>{children}</div>;
+function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={style}><label className="label">{label}</label>{children}</div>;
 }
 function CableStatusBadge({ status }: { status: string }) {
   const cls = status === 'active' ? 'badge-online' : status === 'faulty' ? 'badge-offline' : 'badge-gray';

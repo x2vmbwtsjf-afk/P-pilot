@@ -128,6 +128,7 @@ function RackModal({ initial, onClose, onSave }: { initial: Rack | null; onClose
     name:         initial?.name         ?? '',
     rackNumber:   initial?.rackNumber   ?? '',
     location:     initial?.location     ?? '',
+    room:         initial?.room         ?? '',
     row:          initial?.row          ?? '',
     totalU:       initial?.totalU       ?? 42,
     manufacturer: initial?.manufacturer ?? '',
@@ -149,6 +150,7 @@ function RackModal({ initial, onClose, onSave }: { initial: Rack | null; onClose
       name: form.name.trim(),
       rackNumber: form.rackNumber.trim() || undefined,
       location: form.location.trim(),
+      room: form.room.trim() || undefined,
       row: form.row.trim() || undefined,
       totalU: Number(form.totalU) || 42,
       manufacturer: form.manufacturer.trim() || undefined,
@@ -169,7 +171,8 @@ function RackModal({ initial, onClose, onSave }: { initial: Rack | null; onClose
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
             <Field label="Rack Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Rack A1" autoFocus /></Field>
             <Field label="Rack Number"><input className="input" value={form.rackNumber} onChange={set('rackNumber')} placeholder="e.g. A1" /></Field>
-            <Field label="Location / Room"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. Server Room 1" /></Field>
+            <Field label="Location / Data Center"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. DC-West" /></Field>
+            <Field label="Room"><input className="input" value={form.room} onChange={set('room')} placeholder="e.g. Server Room 1" /></Field>
             <Field label="Row"><input className="input" value={form.row} onChange={set('row')} placeholder="e.g. A" /></Field>
             <Field label="Total Units (U)"><input className="input" type="number" min={1} max={100} value={form.totalU} onChange={set('totalU')} /></Field>
             <Field label="Status">
