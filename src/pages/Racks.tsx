@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getRacks, putRack, deleteRack, getDevices, generateId } from '../db';
-import type { Rack, Device } from '../types';
+import type { Rack, Device, RackStatus } from '../types';
 import { navigate } from '../App';
 import { useToast } from '../components/Toast';
+
+const RACK_STATUSES: RackStatus[] = ['active', 'maintenance', 'decommissioned'];
+const MANUFACTURERS = ['APC', 'Rittal', 'Tripp Lite', 'Vertiv', 'Eaton', 'Middle Atlantic', 'Other'];
 
 export default function Racks() {
   const { toast } = useToast();
@@ -21,7 +24,8 @@ export default function Racks() {
 
   const filtered = racks.filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.location.toLowerCase().includes(search.toLowerCase())
+    r.location.toLowerCase().includes(search.toLowerCase()) ||
+    (r.rackNumber ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   async function handleDelete(id: string) {
@@ -43,7 +47,7 @@ export default function Racks() {
         </button>
       </div>
 
-      <input className="input" placeholder="Search by name or location…" value={search} onChange={e => setSearch(e.target.value)}
+      <input className="input" placeholder="Search by name, number, or location…" value={search} onChange={e => setSearch(e.target.value)}
         style={{ marginBottom: '1.25rem', maxWidth: 340 }} />
 
       {filtered.length === 0
@@ -54,12 +58,15 @@ export default function Racks() {
               const rackDevices = devices.filter(d => d.rackId === rack.id);
               const usedU = rackDevices.reduce((s, d) => s + (d.uHeight ?? 1), 0);
               const pct   = rack.totalU > 0 ? Math.min(100, Math.round(usedU / rack.totalU * 100)) : 0;
+              const statusColor = rack.status === 'maintenance' ? '#ffb700' : rack.status === 'decommissioned' ? '#ff4d4d' : '#00FF94';
               return (
                 <div key={rack.id} className="card" style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => navigate(`rack/${rack.id}`)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{rack.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{rack.location}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                        {rack.location}{rack.row ? ` · Row ${rack.row}` : ''}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem' }} onClick={e => e.stopPropagation()}>
                       <button className="btn-icon" onClick={() => { setEditing(rack); setShowModal(true); }}><EditIcon /></button>
@@ -80,12 +87,17 @@ export default function Racks() {
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span className="badge badge-blue">{rack.totalU}U</span>
                     <span className="badge badge-gray">{rackDevices.length} devices</span>
+                    {rack.status && rack.status !== 'active' && (
+                      <span className="badge" style={{ background: `${statusColor}20`, color: statusColor, border: `1px solid ${statusColor}40` }}>{rack.status}</span>
+                    )}
                     {pct > 90 && <span className="badge badge-offline">Critical</span>}
                   </div>
 
-                  {rack.description && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
-                      {rack.description}
+                  {(rack.manufacturer || rack.tech || rack.powerAmps) && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      {rack.manufacturer && <span>{rack.manufacturer}</span>}
+                      {rack.powerAmps && <span>⚡ {rack.powerAmps}A</span>}
+                      {rack.tech && <span>👤 {rack.tech}</span>}
                     </div>
                   )}
                 </div>
@@ -113,31 +125,68 @@ export default function Racks() {
 
 function RackModal({ initial, onClose, onSave }: { initial: Rack | null; onClose: () => void; onSave: (r: Rack) => void }) {
   const [form, setForm] = useState({
-    name:        initial?.name        ?? '',
-    location:    initial?.location    ?? '',
-    totalU:      initial?.totalU      ?? 42,
-    description: initial?.description ?? '',
+    name:         initial?.name         ?? '',
+    rackNumber:   initial?.rackNumber   ?? '',
+    location:     initial?.location     ?? '',
+    row:          initial?.row          ?? '',
+    totalU:       initial?.totalU       ?? 42,
+    manufacturer: initial?.manufacturer ?? '',
+    powerAmps:    initial?.powerAmps?.toString() ?? '',
+    tech:         initial?.tech         ?? '',
+    status:       initial?.status       ?? 'active' as RackStatus,
+    description:  initial?.description  ?? '',
   });
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return;
     const now = Date.now();
-    onSave({ id: initial?.id ?? generateId(), name: form.name.trim(), location: form.location.trim(), totalU: Number(form.totalU) || 42, description: form.description.trim(), createdAt: initial?.createdAt ?? now, updatedAt: now });
+    onSave({
+      id: initial?.id ?? generateId(),
+      name: form.name.trim(),
+      rackNumber: form.rackNumber.trim() || undefined,
+      location: form.location.trim(),
+      row: form.row.trim() || undefined,
+      totalU: Number(form.totalU) || 42,
+      manufacturer: form.manufacturer.trim() || undefined,
+      powerAmps: form.powerAmps ? Number(form.powerAmps) : undefined,
+      tech: form.tech.trim() || undefined,
+      status: form.status,
+      description: form.description.trim() || undefined,
+      createdAt: initial?.createdAt ?? now,
+      updatedAt: now,
+    });
   }
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
         <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Rack' : 'Add Rack'}</h2>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <Field label="Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Rack A1" autoFocus /></Field>
-          <Field label="Location"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. Row 1, DC-1" /></Field>
-          <Field label="Size (U)"><input className="input" type="number" min={1} max={100} value={form.totalU} onChange={set('totalU')} /></Field>
-          <Field label="Description"><textarea className="input" value={form.description} onChange={set('description')} rows={2} style={{ resize: 'vertical' }} /></Field>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+            <Field label="Rack Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Rack A1" autoFocus /></Field>
+            <Field label="Rack Number"><input className="input" value={form.rackNumber} onChange={set('rackNumber')} placeholder="e.g. A1" /></Field>
+            <Field label="Location / Room"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. Server Room 1" /></Field>
+            <Field label="Row"><input className="input" value={form.row} onChange={set('row')} placeholder="e.g. A" /></Field>
+            <Field label="Total Units (U)"><input className="input" type="number" min={1} max={100} value={form.totalU} onChange={set('totalU')} /></Field>
+            <Field label="Status">
+              <select className="input" value={form.status} onChange={set('status')}>
+                {RACK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+            <Field label="Manufacturer">
+              <select className="input" value={form.manufacturer} onChange={set('manufacturer')}>
+                <option value="">None</option>
+                {MANUFACTURERS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </Field>
+            <Field label="Power (A)"><input className="input" type="number" min={0} step={0.1} value={form.powerAmps} onChange={set('powerAmps')} placeholder="e.g. 20" /></Field>
+            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+          </div>
+          <Field label="Notes / Description"><textarea className="input" value={form.description} onChange={set('description')} rows={2} style={{ resize: 'vertical' }} /></Field>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary">Save</button>

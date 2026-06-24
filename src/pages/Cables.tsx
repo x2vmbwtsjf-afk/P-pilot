@@ -26,7 +26,9 @@ export default function Cables() {
 
   const filtered = cables.filter(c => {
     const q = search.toLowerCase();
-    const matchQ = !q || c.label.toLowerCase().includes(q) || c.fromPort.toLowerCase().includes(q) || c.toPort.toLowerCase().includes(q);
+    const nearEnd = c.nearEnd || c.fromPort || '';
+    const farEnd  = c.farEnd  || c.toPort   || '';
+    const matchQ = !q || c.label.toLowerCase().includes(q) || nearEnd.toLowerCase().includes(q) || farEnd.toLowerCase().includes(q) || (c.cableNumber ?? '').toLowerCase().includes(q) || (c.tech ?? '').toLowerCase().includes(q);
     return matchQ && (!filterStatus || c.status === filterStatus) && (!filterType || c.type === filterType);
   });
 
@@ -50,7 +52,7 @@ export default function Cables() {
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <input className="input" placeholder="Search label, from, to…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 280 }} />
+        <input className="input" placeholder="Search label, near/far end, tech…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 300 }} />
         <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 140 }}>
           <option value="">All Status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -76,16 +78,19 @@ export default function Cables() {
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
-                  <tr><th>Label</th><th>Type</th><th>Length</th><th>From</th><th>To</th><th>Color</th><th>Status</th><th></th></tr>
+                  <tr><th>Label</th><th>Type</th><th>Length</th><th>Near End</th><th>Far End</th><th>Color</th><th>Tech</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {filtered.map(c => (
                     <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`cable/${c.id}`)}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.label}</td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.label}</div>
+                        {c.cableNumber && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c.cableNumber}</div>}
+                      </td>
                       <td><span className="badge badge-blue">{c.type}</span></td>
                       <td>{c.lengthM}m</td>
-                      <td style={{ fontSize: '0.8rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.fromPort}</td>
-                      <td style={{ fontSize: '0.8rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.toPort}</td>
+                      <td style={{ fontSize: '0.8rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nearEnd || c.fromPort || '—'}</td>
+                      <td style={{ fontSize: '0.8rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.farEnd || c.toPort || '—'}</td>
                       <td>
                         {c.color
                           ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -95,6 +100,7 @@ export default function Cables() {
                           : '—'
                         }
                       </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.tech || '—'}</td>
                       <td><CableStatusBadge status={c.status} /></td>
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -129,14 +135,16 @@ export default function Cables() {
 
 function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClose: () => void; onSave: (c: Cable) => void }) {
   const [form, setForm] = useState({
-    label:    initial?.label    ?? '',
-    type:     initial?.type     ?? 'cat6' as CableType,
-    lengthM:  initial?.lengthM  ?? 1,
-    fromPort: initial?.fromPort ?? '',
-    toPort:   initial?.toPort   ?? '',
-    status:   initial?.status   ?? 'active' as CableStatus,
-    color:    initial?.color    ?? '',
-    notes:    initial?.notes    ?? '',
+    label:       initial?.label                             ?? '',
+    type:        initial?.type                              ?? 'cat6' as CableType,
+    lengthM:     initial?.lengthM                          ?? 1,
+    nearEnd:     initial?.nearEnd ?? initial?.fromPort     ?? '',
+    farEnd:      initial?.farEnd  ?? initial?.toPort       ?? '',
+    status:      initial?.status                           ?? 'active' as CableStatus,
+    color:       initial?.color                            ?? '',
+    tech:        initial?.tech                             ?? '',
+    cableNumber: initial?.cableNumber                      ?? '',
+    notes:       initial?.notes                            ?? '',
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -148,13 +156,18 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
     const now = Date.now();
     onSave({
       id: initial?.id ?? generateId(),
-      label: form.label.trim(), type: form.type,
+      label: form.label.trim(),
+      type: form.type,
       lengthM: Number(form.lengthM) || 1,
-      fromPort: form.fromPort.trim(), toPort: form.toPort.trim(),
+      nearEnd: form.nearEnd.trim(),
+      farEnd:  form.farEnd.trim(),
       status: form.status,
-      color: form.color.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-      createdAt: initial?.createdAt ?? now, updatedAt: now,
+      color:       form.color.trim()       || undefined,
+      tech:        form.tech.trim()        || undefined,
+      cableNumber: form.cableNumber.trim() || undefined,
+      notes:       form.notes.trim()       || undefined,
+      createdAt: initial?.createdAt ?? now,
+      updatedAt: now,
     });
   }
 
@@ -164,26 +177,28 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
         <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Cable' : 'Add Cable'}</h2>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-            <Field label="Label *"><input className="input" required value={form.label} onChange={set('label')} placeholder="e.g. CBL-001" autoFocus /></Field>
+            <Field label="Label / Name *"><input className="input" required value={form.label} onChange={set('label')} placeholder="e.g. CAT6 Patch #1" autoFocus /></Field>
+            <Field label="Number / ID"><input className="input" value={form.cableNumber} onChange={set('cableNumber')} placeholder="CBL-001" /></Field>
             <Field label="Type">
               <select className="input" value={form.type} onChange={set('type')}>
                 {CABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </Field>
-            <Field label="Length (m)"><input className="input" type="number" min={0.1} step={0.1} value={form.lengthM} onChange={set('lengthM')} /></Field>
             <Field label="Status">
               <select className="input" value={form.status} onChange={set('status')}>
                 {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
-            <Field label="From Port"><input className="input" value={form.fromPort} onChange={set('fromPort')} placeholder="SW1:eth0" /></Field>
-            <Field label="To Port"><input className="input" value={form.toPort} onChange={set('toPort')} placeholder="SRV1:nic0" /></Field>
+            <Field label="Length (m)"><input className="input" type="number" min={0.1} step={0.1} value={form.lengthM} onChange={set('lengthM')} /></Field>
             <Field label="Color">
               <select className="input" value={form.color} onChange={set('color')}>
                 <option value="">None</option>
                 {Object.keys(COLOR_MAP).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Near End"><input className="input" value={form.nearEnd} onChange={set('nearEnd')} placeholder="SW1:Gi1/0/1" /></Field>
+            <Field label="Far End"><input className="input" value={form.farEnd} onChange={set('farEnd')} placeholder="SRV1:NIC0" /></Field>
+            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
           </div>
           <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} style={{ resize: 'vertical' }} /></Field>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>

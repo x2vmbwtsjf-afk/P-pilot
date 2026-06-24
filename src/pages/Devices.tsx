@@ -5,7 +5,16 @@ import { navigate } from '../App';
 import { useToast } from '../components/Toast';
 
 const DEVICE_TYPES: DeviceType[] = ['server','switch','router','firewall','storage','pdu','patch-panel','ups','other'];
-const STATUSES: DeviceStatus[]   = ['online','offline','standby'];
+const STATUSES: DeviceStatus[]   = ['online','offline','standby','maintenance'];
+const NETWORK_TYPES = new Set(['switch','router','firewall']);
+
+type DeviceGroup = 'server' | 'network' | 'ups' | 'other';
+function getGroup(type: DeviceType): DeviceGroup {
+  if (type === 'server') return 'server';
+  if (NETWORK_TYPES.has(type)) return 'network';
+  if (type === 'ups') return 'ups';
+  return 'other';
+}
 
 export default function Devices() {
   const { toast } = useToast();
@@ -26,7 +35,7 @@ export default function Devices() {
 
   const filtered = devices.filter(d => {
     const q = search.toLowerCase();
-    const matchQ = !q || d.name.toLowerCase().includes(q) || d.serial.toLowerCase().includes(q) || (d.ip ?? '').includes(q) || (d.manufacturer ?? '').toLowerCase().includes(q);
+    const matchQ = !q || d.name.toLowerCase().includes(q) || d.serial.toLowerCase().includes(q) || (d.ip ?? '').includes(q) || (d.managementIp ?? '').includes(q) || (d.manufacturer ?? '').toLowerCase().includes(q) || (d.tech ?? '').toLowerCase().includes(q);
     return matchQ && (!filterStatus || d.status === filterStatus) && (!filterType || d.type === filterType);
   });
 
@@ -39,6 +48,14 @@ export default function Devices() {
 
   function rackName(id?: string) {
     return racks.find(r => r.id === id)?.name ?? '—';
+  }
+
+  function subInfo(d: Device): string {
+    const g = getGroup(d.type);
+    if (g === 'server')  return [d.ip, d.os].filter(Boolean).join(' · ') || '—';
+    if (g === 'network') return [d.managementIp, d.ports ? `${d.ports}p` : null].filter(Boolean).join(' · ') || '—';
+    if (g === 'ups')     return d.capacityVA ? `${d.capacityVA}VA` : '—';
+    return d.ip ?? '—';
   }
 
   return (
@@ -54,8 +71,8 @@ export default function Devices() {
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <input className="input" placeholder="Search name, serial, IP, manufacturer…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 300 }} />
-        <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 140 }}>
+        <input className="input" placeholder="Search name, serial, IP, manufacturer, tech…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 320 }} />
+        <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 150 }}>
           <option value="">All Status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -80,7 +97,7 @@ export default function Devices() {
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
-                  <tr><th>Name</th><th>Type</th><th>Serial</th><th>Rack</th><th>U Pos</th><th>IP</th><th>Status</th><th></th></tr>
+                  <tr><th>Name</th><th>Type</th><th>Serial</th><th>Rack</th><th>U Pos</th><th>Info</th><th>Tech</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {filtered.map(d => (
@@ -90,7 +107,8 @@ export default function Devices() {
                       <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{d.serial || '—'}</td>
                       <td>{rackName(d.rackId)}</td>
                       <td>{d.uPosition ? `U${d.uPosition}` : '—'}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{d.ip || '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{subInfo(d)}</td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{d.tech || '—'}</td>
                       <td><StatusBadge status={d.status} /></td>
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -126,21 +144,35 @@ export default function Devices() {
 
 function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | null; racks: Rack[]; onClose: () => void; onSave: (d: Device) => void }) {
   const [form, setForm] = useState({
-    name:         initial?.name         ?? '',
-    type:         initial?.type         ?? 'server' as DeviceType,
-    serial:       initial?.serial       ?? '',
-    rackId:       initial?.rackId       ?? '',
-    uPosition:    initial?.uPosition?.toString() ?? '',
-    uHeight:      initial?.uHeight      ?? 1,
-    status:       initial?.status       ?? 'online' as DeviceStatus,
-    ip:           initial?.ip           ?? '',
-    manufacturer: initial?.manufacturer ?? '',
-    model:        initial?.model        ?? '',
-    notes:        initial?.notes        ?? '',
+    name:            initial?.name            ?? '',
+    type:            initial?.type            ?? 'server' as DeviceType,
+    serial:          initial?.serial          ?? '',
+    rackId:          initial?.rackId          ?? '',
+    uPosition:       initial?.uPosition?.toString() ?? '',
+    uHeight:         initial?.uHeight         ?? 1,
+    status:          initial?.status          ?? 'online' as DeviceStatus,
+    manufacturer:    initial?.manufacturer    ?? '',
+    model:           initial?.model           ?? '',
+    tech:            initial?.tech            ?? '',
+    // server
+    ip:              initial?.ip              ?? '',
+    os:              initial?.os              ?? '',
+    // network
+    managementIp:    initial?.managementIp    ?? '',
+    ports:           initial?.ports?.toString()  ?? '',
+    vlan:            initial?.vlan            ?? '',
+    // ups
+    capacityVA:      initial?.capacityVA?.toString() ?? '',
+    batteryReplaced: initial?.batteryReplaced ?? '',
+    // other
+    category:        initial?.category        ?? '',
+    notes:           initial?.notes           ?? '',
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const group = getGroup(form.type as DeviceType);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -148,16 +180,27 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
     const now = Date.now();
     onSave({
       id: initial?.id ?? generateId(),
-      name: form.name.trim(), type: form.type, serial: form.serial.trim(),
+      name: form.name.trim(),
+      type: form.type as DeviceType,
+      serial: form.serial.trim(),
       rackId: form.rackId || undefined,
       uPosition: form.uPosition ? Number(form.uPosition) : undefined,
       uHeight: Number(form.uHeight) || 1,
-      status: form.status,
-      ip: form.ip.trim() || undefined,
+      status: form.status as DeviceStatus,
       manufacturer: form.manufacturer.trim() || undefined,
-      model: form.model.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-      createdAt: initial?.createdAt ?? now, updatedAt: now,
+      model:        form.model.trim()        || undefined,
+      tech:         form.tech.trim()         || undefined,
+      ip:           (group === 'server' || group === 'other') ? (form.ip.trim() || undefined) : undefined,
+      os:           group === 'server'  ? (form.os.trim()              || undefined) : undefined,
+      managementIp: group === 'network' ? (form.managementIp.trim()   || undefined) : undefined,
+      ports:        group === 'network' ? (Number(form.ports) || undefined) : undefined,
+      vlan:         group === 'network' ? (form.vlan.trim()            || undefined) : undefined,
+      capacityVA:   group === 'ups'     ? (Number(form.capacityVA) || undefined) : undefined,
+      batteryReplaced: group === 'ups'  ? (form.batteryReplaced.trim() || undefined) : undefined,
+      category:     group === 'other'   ? (form.category.trim()        || undefined) : undefined,
+      notes:        form.notes.trim()   || undefined,
+      createdAt: initial?.createdAt ?? now,
+      updatedAt: now,
     });
   }
 
@@ -167,7 +210,9 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
         <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Device' : 'Add Device'}</h2>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-            <Field label="Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. web-srv-01" autoFocus /></Field>
+
+            {/* ─── Always-visible ─── */}
+            <Field label="Name / Hostname *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. web-srv-01" autoFocus /></Field>
             <Field label="Type">
               <select className="input" value={form.type} onChange={set('type')}>
                 {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -179,6 +224,8 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
                 {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
+            <Field label="Manufacturer"><input className="input" value={form.manufacturer} onChange={set('manufacturer')} placeholder="Dell, HPE, Cisco…" /></Field>
+            <Field label="Model"><input className="input" value={form.model} onChange={set('model')} placeholder="PowerEdge R750" /></Field>
             <Field label="Rack">
               <select className="input" value={form.rackId} onChange={set('rackId')}>
                 <option value="">None</option>
@@ -186,10 +233,34 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
               </select>
             </Field>
             <Field label="U Position"><input className="input" type="number" min={1} value={form.uPosition} onChange={set('uPosition')} placeholder="e.g. 10" /></Field>
-            <Field label="U Height"><input className="input" type="number" min={1} max={20} value={form.uHeight} onChange={set('uHeight')} /></Field>
-            <Field label="IP Address"><input className="input" value={form.ip} onChange={set('ip')} placeholder="192.168.1.10" /></Field>
-            <Field label="Manufacturer"><input className="input" value={form.manufacturer} onChange={set('manufacturer')} placeholder="Dell, HPE…" /></Field>
-            <Field label="Model"><input className="input" value={form.model} onChange={set('model')} placeholder="PowerEdge R750" /></Field>
+            <Field label="U Height (U)"><input className="input" type="number" min={1} max={20} value={form.uHeight} onChange={set('uHeight')} /></Field>
+            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+
+            {/* ─── Server-specific ─── */}
+            {group === 'server' && <>
+              <Field label="IP Address"><input className="input" value={form.ip} onChange={set('ip')} placeholder="10.0.1.10" /></Field>
+              <Field label="OS"><input className="input" value={form.os} onChange={set('os')} placeholder="Ubuntu 22.04, ESXi 8…" /></Field>
+            </>}
+
+            {/* ─── Network-specific (switch / router / firewall) ─── */}
+            {group === 'network' && <>
+              <Field label="Management IP"><input className="input" value={form.managementIp} onChange={set('managementIp')} placeholder="10.0.2.1" /></Field>
+              <Field label="Number of Ports"><input className="input" type="number" min={1} value={form.ports} onChange={set('ports')} placeholder="e.g. 48" /></Field>
+              <Field label="VLAN / Segment" style={{ gridColumn: 'span 2' }}><input className="input" value={form.vlan} onChange={set('vlan')} placeholder="VLAN 10, 20, 30 / Core" /></Field>
+            </>}
+
+            {/* ─── UPS-specific ─── */}
+            {group === 'ups' && <>
+              <Field label="Capacity (VA)"><input className="input" type="number" min={0} value={form.capacityVA} onChange={set('capacityVA')} placeholder="e.g. 3000" /></Field>
+              <Field label="Battery Last Replaced"><input className="input" type="date" value={form.batteryReplaced} onChange={set('batteryReplaced')} /></Field>
+            </>}
+
+            {/* ─── Other/custom ─── */}
+            {group === 'other' && <>
+              <Field label="Category / Type"><input className="input" value={form.category} onChange={set('category')} placeholder="e.g. KVM, PDU…" /></Field>
+              <Field label="IP / Location"><input className="input" value={form.ip} onChange={set('ip')} placeholder="IP or physical location" /></Field>
+            </>}
+
           </div>
           <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} style={{ resize: 'vertical' }} /></Field>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -202,11 +273,11 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="label">{label}</label>{children}</div>;
+function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={style}><label className="label">{label}</label>{children}</div>;
 }
 function StatusBadge({ status }: { status: string }) {
-  const cls = status === 'online' ? 'badge-online' : status === 'offline' ? 'badge-offline' : 'badge-standby';
+  const cls = status === 'online' ? 'badge-online' : status === 'offline' ? 'badge-offline' : status === 'maintenance' ? 'badge-standby' : 'badge-standby';
   return <span className={`badge ${cls}`}>{status}</span>;
 }
 function PlusIcon()  { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
