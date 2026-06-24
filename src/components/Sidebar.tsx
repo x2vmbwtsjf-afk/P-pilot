@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { navigate } from '../App';
 
 interface SidebarProps {
@@ -16,70 +17,81 @@ const links = [
 ];
 
 export default function Sidebar({ current, open, onClose }: SidebarProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   return (
-    <aside style={{
-      width: 220,
-      minWidth: 220,
-      background: 'var(--bg-secondary)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '1rem 0.75rem',
-      gap: '0.25rem',
-      position: 'sticky',
-      top: 0,
-      height: '100vh',
-      overflow: 'hidden auto',
-      transition: 'transform 0.25s ease',
-      zIndex: 50,
-      ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
-        position: 'fixed',
-        transform: open ? 'translateX(0)' : 'translateX(-100%)',
-        left: 0,
+    <>
+      <aside style={{
+        width: 220,
+        minWidth: 220,
+        background: 'var(--bg-secondary)',
+        borderRight: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1rem 0.75rem',
+        gap: '0.25rem',
+        position: isMobile ? 'fixed' : 'sticky',
         top: 0,
-      } : {}),
-    }}>
-      {/* Logo */}
-      <div style={{ padding: '0.5rem 0.5rem 1.25rem' }}>
-        <div style={{
-          fontWeight: 800,
-          fontSize: '1.3rem',
-          background: 'linear-gradient(90deg, #00D4FF, #00FF94)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          letterSpacing: '-0.02em',
-        }}>
-          P-Pilot
+        left: 0,
+        height: '100vh',
+        overflow: 'hidden auto',
+        transition: 'transform 0.25s ease',
+        zIndex: 50,
+        transform: isMobile ? (open ? 'translateX(0)' : 'translateX(-100%)') : 'none',
+      }}>
+        {/* Logo */}
+        <div style={{ padding: '0.5rem 0.5rem 1.25rem' }}>
+          <div style={{
+            fontWeight: 800,
+            fontSize: '1.3rem',
+            background: 'linear-gradient(90deg, #00D4FF, #00FF94)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em',
+          }}>
+            P-Pilot
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            DCIM Platform
+          </div>
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          DCIM Platform
+
+        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', padding: '0 0.5rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+          Navigation
         </div>
-      </div>
 
-      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', padding: '0 0.5rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-        Navigation
-      </div>
+        {links.map(({ id, label, icon: Icon }) => (
+          <a
+            key={id}
+            className={`sidebar-link${current === id ? ' active' : ''}`}
+            onClick={(e) => { e.preventDefault(); navigate(id === 'dashboard' ? '' : id); onClose(); }}
+            href={`#${id}`}
+          >
+            <Icon size={16} />
+            {label}
+          </a>
+        ))}
 
-      {links.map(({ id, label, icon: Icon }) => (
-        <a
-          key={id}
-          className={`sidebar-link${current === id ? ' active' : ''}`}
-          onClick={(e) => { e.preventDefault(); navigate(id === 'dashboard' ? '' : id); onClose(); }}
-          href={`#${id}`}
-        >
-          <Icon size={16} />
-          {label}
-        </a>
-      ))}
-
-      <div style={{ flex: 1 }} />
-      <div style={{ padding: '0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF94', display: 'inline-block' }} />
-          System Online
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: '0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF94', display: 'inline-block' }} />
+            System Online
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Reserve layout space on desktop so content doesn't overlap */}
+      {isMobile && <div style={{ width: 0 }} />}
+    </>
   );
 }
 
