@@ -1,7 +1,7 @@
 export type DeviceStatus = 'online' | 'offline' | 'standby';
 export type CableStatus = 'active' | 'spare' | 'faulty';
-export type DeviceType = 'server' | 'switch' | 'router' | 'storage' | 'pdu' | 'patch-panel' | 'ups' | 'other';
-export type CableType = 'cat6' | 'cat6a' | 'cat7' | 'fiber-sm' | 'fiber-mm' | 'dac' | 'aoc' | 'power' | 'other';
+export type DeviceType = 'server' | 'switch' | 'router' | 'firewall' | 'storage' | 'pdu' | 'patch-panel' | 'ups' | 'other';
+export type CableType = 'cat6' | 'cat6a' | 'cat7' | 'fiber-sm' | 'fiber-mm' | 'fiber-om4' | 'dac' | 'aoc' | 'power' | 'other';
 
 export interface Rack {
   id: string;
