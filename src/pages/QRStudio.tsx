@@ -37,6 +37,7 @@ function cableSub(c: Cable): string {
 
 export default function QRStudio() {
   const [tab, setTab]         = useState<Tab>('devices');
+  const [search, setSearch]   = useState('');
   const [devices, setDevices] = useState<Device[]>([]);
   const [racks, setRacks]     = useState<Rack[]>([]);
   const [cables, setCables]   = useState<Cable[]>([]);
@@ -53,7 +54,7 @@ export default function QRStudio() {
     });
   }, []);
 
-  useEffect(() => { setSelected(null); setQrDataUrl(null); }, [tab]);
+  useEffect(() => { setSelected(null); setQrDataUrl(null); setSearch(''); }, [tab]);
 
   function getItems(): ListItem[] {
     if (tab === 'devices') return devices.map(d => ({ id: d.id, label: d.name, sub: deviceSub(d), kind: 'device' as const, raw: d }));
@@ -74,7 +75,7 @@ export default function QRStudio() {
       const url = buildUrl(item.kind, item.id);
       const dataUrl = await QRCode.toDataURL(url, {
         width: 300, margin: 2,
-        color: { dark: '#0a0e1a', light: '#ffffff' },
+        color: { dark: '#0a0a0f', light: '#ffffff' },
         errorCorrectionLevel: 'M',
       });
       setQrDataUrl(dataUrl);
@@ -90,7 +91,6 @@ export default function QRStudio() {
     const url = buildUrl(selected.kind, selected.id);
     const raw = selected.raw;
 
-    // Build type-specific extra lines for label
     let extras = '';
     if (selected.kind === 'device') {
       const d = raw as Device;
@@ -165,79 +165,142 @@ export default function QRStudio() {
     win.document.close();
   }
 
-  const items = getItems();
+  const allItems = getItems();
+  const filteredItems = search
+    ? allItems.filter(i => i.label.toLowerCase().includes(search.toLowerCase()) || i.sub.toLowerCase().includes(search.toLowerCase()))
+    : allItems;
 
   return (
     <div className="fade-in">
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>QR Studio</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Generate, download and print QR codes for any asset</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">QR Studio</h1>
+          <p className="page-sub">Generate, download and print QR codes for any asset</p>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.5rem' }}>
-        {/* Item picker */}
-        <div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', background: 'var(--bg-secondary)', borderRadius: '10px', padding: '0.3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.25rem' }}>
+
+        {/* Left panel: asset picker */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '3px',
+            gap: '2px',
+          }}>
             {(['devices','racks','cables'] as Tab[]).map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{
-                flex: 1, padding: '0.45rem 0', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                fontWeight: 600, fontSize: '0.8rem', transition: 'all 0.15s',
-                background: tab === t ? 'var(--bg-card)' : 'transparent',
-                color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)',
-                boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
-              }}>
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  flex: 1,
+                  padding: '0.4rem 0',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  fontSize: '0.8rem',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                  background: tab === t ? 'var(--bg-secondary)' : 'transparent',
+                  color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+                  boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                }}
+              >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 460, overflowY: 'auto' }}>
-            {items.length === 0
-              ? <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No {tab} found</div>
-              : items.map(item => (
-                <div key={item.id} onClick={() => selectItem(item)} style={{
-                  padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s',
-                  background: selected?.id === item.id ? 'rgba(0,212,255,0.12)' : 'var(--bg-card)',
-                  border: `1px solid ${selected?.id === item.id ? 'rgba(0,212,255,0.4)' : 'var(--border)'}`,
-                }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{item.label}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem', lineHeight: 1.5 }}>{item.sub}</div>
+          {/* Search */}
+          <input
+            className="input"
+            placeholder={`Search ${tab}…`}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+
+          {/* Item list */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            maxHeight: 420,
+            overflowY: 'auto',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '4px',
+          }}>
+            {filteredItems.length === 0
+              ? <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No {tab} found</div>
+              : filteredItems.map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => selectItem(item)}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'background 0.12s',
+                    background: selected?.id === item.id ? 'rgba(59,130,246,0.1)' : 'transparent',
+                    border: `1px solid ${selected?.id === item.id ? 'rgba(59,130,246,0.3)' : 'transparent'}`,
+                  }}
+                  onMouseOver={e => { if (selected?.id !== item.id) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                  onMouseOut={e  => { if (selected?.id !== item.id) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                >
+                  <div style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{item.label}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub || '—'}</div>
                 </div>
               ))
             }
           </div>
         </div>
 
-        {/* QR display */}
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        {/* Right panel: QR preview */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 420, padding: '2rem', gap: '1.25rem' }}>
           {!selected && !generating && (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>🏷️</div>
-              <div style={{ fontSize: '0.875rem' }}>Select an item to generate its QR code</div>
+              <QRPlaceholder />
+              <div style={{ fontSize: '0.8rem', marginTop: '0.75rem' }}>Select an asset to generate its QR code</div>
             </div>
           )}
 
           {generating && (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
-              <div style={{ fontSize: '0.875rem' }}>Generating…</div>
+              <div style={{ fontSize: '0.8rem' }}>Generating QR code…</div>
             </div>
           )}
 
           {qrDataUrl && selected && !generating && (
             <>
-              <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', marginBottom: '1rem', boxShadow: '0 4px 24px rgba(0,212,255,0.2)' }}>
+              <div style={{
+                background: '#ffffff',
+                padding: '16px',
+                borderRadius: '10px',
+                boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+              }}>
                 <img src={qrDataUrl} alt="QR Code" style={{ display: 'block', width: 220, height: 220 }} />
               </div>
-              <div style={{ textAlign: 'center', marginBottom: '1.25rem', maxWidth: 280 }}>
-                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{selected.label}</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.5 }}>{selected.sub}</div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{selected.label}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.5, maxWidth: 240 }}>{selected.sub}</div>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <a href={qrDataUrl} download={`qr-${selected.label.replace(/\s+/g,'-')}.png`} className="btn-secondary">
-                  <DownloadIcon /> Download PNG
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <a
+                  href={qrDataUrl}
+                  download={`qr-${selected.label.replace(/\s+/g,'-')}.png`}
+                  className="btn-secondary"
+                  style={{ padding: '0.45rem 0.75rem' }}
+                  title="Download PNG"
+                >
+                  <DownloadIcon /> Download
                 </a>
-                <button className="btn-primary" onClick={handlePrint}>
+                <button className="btn-primary" onClick={handlePrint} style={{ padding: '0.45rem 0.75rem' }} title="Print Label">
                   <PrintIcon /> Print Label
                 </button>
               </div>
@@ -250,5 +313,15 @@ export default function QRStudio() {
   );
 }
 
+function QRPlaceholder() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3">
+      <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/>
+      <rect x="3" y="16" width="5" height="5" rx="1"/>
+      <path d="M21 16h-3v3"/><path d="M21 21v.01"/><path d="M12 7v3h3"/>
+      <path d="M12 3v.01"/><path d="M12 12v.01"/><path d="M16 12v.01"/><path d="M7 12h.01"/>
+    </svg>
+  );
+}
 function DownloadIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>; }
 function PrintIcon()    { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>; }

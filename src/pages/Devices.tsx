@@ -35,7 +35,9 @@ export default function Devices() {
 
   const filtered = devices.filter(d => {
     const q = search.toLowerCase();
-    const matchQ = !q || d.name.toLowerCase().includes(q) || d.serial.toLowerCase().includes(q) || (d.ip ?? '').includes(q) || (d.managementIp ?? '').includes(q) || (d.manufacturer ?? '').toLowerCase().includes(q) || (d.tech ?? '').toLowerCase().includes(q);
+    const matchQ = !q || d.name.toLowerCase().includes(q) || d.serial.toLowerCase().includes(q) ||
+      (d.ip ?? '').includes(q) || (d.managementIp ?? '').includes(q) ||
+      (d.manufacturer ?? '').toLowerCase().includes(q) || (d.tech ?? '').toLowerCase().includes(q);
     return matchQ && (!filterStatus || d.status === filterStatus) && (!filterType || d.type === filterType);
   });
 
@@ -58,21 +60,29 @@ export default function Devices() {
     return d.ip ?? '—';
   }
 
+  const hasFilters = search || filterStatus || filterType;
+
   return (
     <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Devices</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{devices.length} device{devices.length !== 1 ? 's' : ''} in inventory</p>
+          <h1 className="page-title">Devices</h1>
+          <p className="page-sub">{devices.length} device{devices.length !== 1 ? 's' : ''} in inventory</p>
         </div>
         <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true); }}>
           <PlusIcon /> Add Device
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <input className="input" placeholder="Search name, serial, IP, manufacturer, tech…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 320 }} />
-        <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 150 }}>
+      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <input
+          className="input"
+          placeholder="Search name, serial, IP…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 280 }}
+        />
+        <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 140 }}>
           <option value="">All Status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -80,8 +90,8 @@ export default function Devices() {
           <option value="">All Types</option>
           {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        {(search || filterStatus || filterType) && (
-          <button className="btn-secondary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+        {hasFilters && (
+          <button className="btn-secondary" style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
             onClick={() => { setSearch(''); setFilterStatus(''); setFilterType(''); }}>
             Clear
           </button>
@@ -90,14 +100,22 @@ export default function Devices() {
 
       <div className="card" style={{ overflow: 'hidden' }}>
         {filtered.length === 0
-          ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {search || filterStatus || filterType ? 'No devices match filters' : 'No devices yet — add one!'}
-            </div>
+          ? <Empty text={hasFilters ? 'No devices match filters' : 'No devices yet — add one!'} />
           : (
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
-                  <tr><th>Name</th><th>Type</th><th>Serial</th><th>Rack</th><th>U Pos</th><th>Info</th><th>Tech</th><th>Status</th><th></th></tr>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Serial</th>
+                    <th>Rack</th>
+                    <th>U Pos</th>
+                    <th>Info</th>
+                    <th>Tech</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
                 </thead>
                 <tbody>
                   {filtered.map(d => (
@@ -105,15 +123,15 @@ export default function Devices() {
                       <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.name}</td>
                       <td><span className="badge badge-blue">{d.type}</span></td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{d.serial || '—'}</td>
-                      <td>{rackName(d.rackId)}</td>
-                      <td>{d.uPosition ? `U${d.uPosition}` : '—'}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{subInfo(d)}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{rackName(d.rackId)}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{d.uPosition ? `U${d.uPosition}` : '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{subInfo(d)}</td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{d.tech || '—'}</td>
                       <td><StatusBadge status={d.status} /></td>
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.3rem' }}>
                           <button className="btn-icon" onClick={() => { setEditing(d); setShowModal(true); }}><EditIcon /></button>
-                          <button className="btn-icon" style={{ color: '#ff4d4d', borderColor: 'rgba(255,77,77,0.3)' }} onClick={() => handleDelete(d.id)}><TrashIcon /></button>
+                          <button className="btn-icon red" onClick={() => handleDelete(d.id)}><TrashIcon /></button>
                         </div>
                       </td>
                     </tr>
@@ -155,17 +173,13 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
     manufacturer:        initial?.manufacturer    ?? '',
     model:               initial?.model           ?? '',
     tech:                initial?.tech            ?? '',
-    // server
     ipAddress:           initial?.ipAddress ?? initial?.ip ?? '',
     os:                  initial?.os              ?? '',
-    // network
     managementIp:        initial?.managementIp    ?? '',
     ports:               initial?.ports?.toString()  ?? '',
     vlan:                initial?.vlan            ?? '',
-    // ups
     capacityVA:          initial?.capacityVA?.toString() ?? '',
     batteryLastReplaced: initial?.batteryLastReplaced ?? initial?.batteryReplaced ?? '',
-    // other
     category:            initial?.category        ?? '',
     notes:               initial?.notes           ?? '',
   });
@@ -213,66 +227,64 @@ function DeviceModal({ initial, racks, onClose, onSave }: { initial: Device | nu
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
-        <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Device' : 'Add Device'}</h2>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+        <div className="modal-header">
+          <h2 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{initial ? 'Edit Device' : 'Add Device'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+        <form onSubmit={submit}>
+          <div className="modal-body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <Field label="Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. web-srv-01" autoFocus /></Field>
+              <Field label="Type">
+                <select className="input" value={form.type} onChange={set('type')}>
+                  {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Serial Number"><input className="input" value={form.serial} onChange={set('serial')} placeholder="SN-XXXX" /></Field>
+              <Field label="Status">
+                <select className="input" value={form.status} onChange={set('status')}>
+                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <Field label="Manufacturer"><input className="input" value={form.manufacturer} onChange={set('manufacturer')} placeholder="Dell, HPE, Cisco…" /></Field>
+              <Field label="Model"><input className="input" value={form.model} onChange={set('model')} placeholder="PowerEdge R750" /></Field>
+              <Field label="Rack">
+                <select className="input" value={form.rackId} onChange={set('rackId')}>
+                  <option value="">None</option>
+                  {racks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </Field>
+              <Field label="U Position"><input className="input" type="number" min={1} value={form.uPosition} onChange={set('uPosition')} placeholder="e.g. 10" /></Field>
+              <Field label="U Size"><input className="input" type="number" min={1} max={20} value={form.uSize} onChange={set('uSize')} /></Field>
+              <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
 
-            {/* ─── Always-visible ─── */}
-            <Field label="Name / Hostname *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. web-srv-01" autoFocus /></Field>
-            <Field label="Type">
-              <select className="input" value={form.type} onChange={set('type')}>
-                {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Serial Number"><input className="input" value={form.serial} onChange={set('serial')} placeholder="SN-XXXX" /></Field>
-            <Field label="Status">
-              <select className="input" value={form.status} onChange={set('status')}>
-                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="Manufacturer"><input className="input" value={form.manufacturer} onChange={set('manufacturer')} placeholder="Dell, HPE, Cisco…" /></Field>
-            <Field label="Model"><input className="input" value={form.model} onChange={set('model')} placeholder="PowerEdge R750" /></Field>
-            <Field label="Rack">
-              <select className="input" value={form.rackId} onChange={set('rackId')}>
-                <option value="">None</option>
-                {racks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </Field>
-            <Field label="U Position"><input className="input" type="number" min={1} value={form.uPosition} onChange={set('uPosition')} placeholder="e.g. 10" /></Field>
-            <Field label="U Size (U)"><input className="input" type="number" min={1} max={20} value={form.uSize} onChange={set('uSize')} /></Field>
-            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+              {group === 'server' && <>
+                <Field label="Hostname"><input className="input" value={form.hostname} onChange={set('hostname')} placeholder="e.g. web-srv-01" /></Field>
+                <Field label="IP Address"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="10.0.1.10" /></Field>
+                <Field label="OS" style={{ gridColumn: 'span 2' }}><input className="input" value={form.os} onChange={set('os')} placeholder="Ubuntu 22.04, ESXi 8…" /></Field>
+              </>}
 
-            {/* ─── Server-specific ─── */}
-            {group === 'server' && <>
-              <Field label="Hostname"><input className="input" value={form.hostname} onChange={set('hostname')} placeholder="e.g. web-srv-01" /></Field>
-              <Field label="IP Address"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="10.0.1.10" /></Field>
-              <Field label="OS" style={{ gridColumn: 'span 2' }}><input className="input" value={form.os} onChange={set('os')} placeholder="Ubuntu 22.04, ESXi 8…" /></Field>
-            </>}
+              {group === 'network' && <>
+                <Field label="Management IP"><input className="input" value={form.managementIp} onChange={set('managementIp')} placeholder="10.0.2.1" /></Field>
+                <Field label="Number of Ports"><input className="input" type="number" min={1} value={form.ports} onChange={set('ports')} placeholder="e.g. 48" /></Field>
+                <Field label="VLAN / Segment" style={{ gridColumn: 'span 2' }}><input className="input" value={form.vlan} onChange={set('vlan')} placeholder="VLAN 10, 20, 30 / Core" /></Field>
+              </>}
 
-            {/* ─── Network-specific (switch / router / firewall) ─── */}
-            {group === 'network' && <>
-              <Field label="Management IP"><input className="input" value={form.managementIp} onChange={set('managementIp')} placeholder="10.0.2.1" /></Field>
-              <Field label="Number of Ports"><input className="input" type="number" min={1} value={form.ports} onChange={set('ports')} placeholder="e.g. 48" /></Field>
-              <Field label="VLAN / Segment" style={{ gridColumn: 'span 2' }}><input className="input" value={form.vlan} onChange={set('vlan')} placeholder="VLAN 10, 20, 30 / Core" /></Field>
-            </>}
+              {group === 'ups' && <>
+                <Field label="Capacity (VA)"><input className="input" type="number" min={0} value={form.capacityVA} onChange={set('capacityVA')} placeholder="e.g. 3000" /></Field>
+                <Field label="Battery Last Replaced"><input className="input" type="date" value={form.batteryLastReplaced} onChange={set('batteryLastReplaced')} /></Field>
+              </>}
 
-            {/* ─── UPS-specific ─── */}
-            {group === 'ups' && <>
-              <Field label="Capacity (VA)"><input className="input" type="number" min={0} value={form.capacityVA} onChange={set('capacityVA')} placeholder="e.g. 3000" /></Field>
-              <Field label="Battery Last Replaced"><input className="input" type="date" value={form.batteryLastReplaced} onChange={set('batteryLastReplaced')} /></Field>
-            </>}
-
-            {/* ─── Other/custom ─── */}
-            {group === 'other' && <>
-              <Field label="Category / Type"><input className="input" value={form.category} onChange={set('category')} placeholder="e.g. KVM, PDU…" /></Field>
-              <Field label="IP / Location"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="IP or physical location" /></Field>
-            </>}
-
+              {group === 'other' && <>
+                <Field label="Category / Type"><input className="input" value={form.category} onChange={set('category')} placeholder="e.g. KVM, PDU…" /></Field>
+                <Field label="IP / Location"><input className="input" value={form.ipAddress} onChange={set('ipAddress')} placeholder="IP or physical location" /></Field>
+              </>}
+            </div>
+            <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} /></Field>
           </div>
-          <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} style={{ resize: 'vertical' }} /></Field>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">Save</button>
+            <button type="submit" className="btn-primary">Save Device</button>
           </div>
         </form>
       </div>
@@ -284,8 +296,11 @@ function Field({ label, children, style }: { label: string; children: React.Reac
   return <div style={style}><label className="label">{label}</label>{children}</div>;
 }
 function StatusBadge({ status }: { status: string }) {
-  const cls = status === 'online' ? 'badge-online' : status === 'offline' ? 'badge-offline' : status === 'maintenance' ? 'badge-standby' : 'badge-standby';
+  const cls = status === 'online' ? 'badge-online' : status === 'offline' ? 'badge-offline' : 'badge-standby';
   return <span className={`badge ${cls}`}>{status}</span>;
+}
+function Empty({ text }: { text: string }) {
+  return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{text}</div>;
 }
 function PlusIcon()  { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
 function EditIcon()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>; }

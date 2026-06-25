@@ -37,16 +37,13 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
 
-  useEffect(() => {
-    getRacks().then(r => setRacks(r ?? []));
-  }, []);
+  useEffect(() => { getRacks().then(r => setRacks(r ?? [])); }, []);
 
-  // Live QR generation
   useEffect(() => {
     const url = buildUrl(form.kind, id);
     QRCode.toDataURL(url, {
       width: 240, margin: 1,
-      color: { dark: '#0a0e1a', light: '#ffffff' },
+      color: { dark: '#0a0a0f', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     }).then(setQrDataUrl).catch(() => {});
   }, [form.kind, id]);
@@ -89,7 +86,7 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
       toast(`${form.kind.charAt(0).toUpperCase() + form.kind.slice(1)} saved`);
       onSaved?.(form.kind === 'custom' ? 'device' : form.kind, id);
       return true;
-    } catch (err) {
+    } catch {
       toast('Save failed', 'error');
       return false;
     } finally {
@@ -114,12 +111,12 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box" style={{ maxWidth: 640 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontWeight: 700, fontSize: '1.1rem' }}>Create QR Label</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>×</button>
+        <div className="modal-header">
+          <h2 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>Create QR Label</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', padding: '1.25rem 1.5rem' }}>
           {/* Form */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
@@ -148,42 +145,46 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
               </Field>
             </div>
             <Field label="Notes">
-              <textarea className="input" value={form.notes} onChange={set('notes')} rows={2} style={{ resize: 'vertical' }} />
+              <textarea className="input" value={form.notes} onChange={set('notes')} rows={2} />
             </Field>
 
-            {/* Generated ID + URL */}
-            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '0.75rem', fontSize: '0.72rem' }}>
-              <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Generated ID: <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{id}</span></div>
-              <div style={{ color: 'var(--text-muted)', wordBreak: 'break-all' }}>URL: <span style={{ fontFamily: 'monospace', color: 'var(--accent-blue)' }}>{previewUrl}</span></div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-              <button className="btn-secondary" onClick={onClose}>Cancel</button>
-              <button className="btn-secondary" onClick={handleSaveOnly} disabled={saving}>Save only</button>
-              <button className="btn-primary" onClick={handleSavePrint} disabled={saving}>
-                <PrintIcon /> Save &amp; Print
-              </button>
+            {/* ID + URL info */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.65rem 0.85rem', fontSize: '0.72rem' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+                ID: <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{id}</span>
+              </div>
+              <div style={{ color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                URL: <span style={{ fontFamily: 'monospace', color: 'var(--accent-blue)' }}>{previewUrl}</span>
+              </div>
             </div>
           </div>
 
           {/* Live QR preview */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', minWidth: 160 }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Live Preview</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', minWidth: 156 }}>
+            <span className="section-label" style={{ marginBottom: '0.35rem' }}>Live Preview</span>
             {qrDataUrl
-              ? <div style={{ background: '#fff', padding: 8, borderRadius: 10, boxShadow: '0 2px 16px rgba(0,212,255,0.2)' }}>
-                  <img src={qrDataUrl} alt="QR" style={{ display: 'block', width: 140, height: 140 }} />
+              ? <div style={{ background: '#fff', padding: 8, borderRadius: 8, boxShadow: '0 2px 16px rgba(0,0,0,0.4)' }}>
+                  <img src={qrDataUrl} alt="QR" style={{ display: 'block', width: 136, height: 136 }} />
                 </div>
-              : <div style={{ width: 140, height: 140, background: 'var(--bg-secondary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>…</div>
+              : <div style={{ width: 136, height: 136, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>…</div>
             }
             {form.name && (
-              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, maxWidth: 160, wordBreak: 'break-word' }}>
+              <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500, maxWidth: 156, wordBreak: 'break-word' }}>
                 {form.name}
               </div>
             )}
             {form.serial && (
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{form.serial}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{form.serial}</div>
             )}
           </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={handleSaveOnly} disabled={saving}>Save only</button>
+          <button className="btn-primary" onClick={handleSavePrint} disabled={saving}>
+            <PrintIcon /> Save &amp; Print
+          </button>
         </div>
       </div>
     </div>

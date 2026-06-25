@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [showScan, setShowScan]     = useState(false);
   const [prefillId, setPrefillId]   = useState<string | undefined>();
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const load = () =>
     Promise.all([getRacks(), getDevices(), getCables()]).then(([r, d, c]) => {
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const faultyC = cables.filter(c => c.status === 'faulty').length;
   const usedU   = devices.reduce((s, d) => s + (d.uHeight ?? 1), 0);
   const totalU  = racks.reduce((s, r) => s + r.totalU, 0);
+  const fillPct = totalU > 0 ? Math.round(usedU / totalU * 100) : 0;
 
   const alerts: string[] = [];
   if (offline > 0) alerts.push(`${offline} device${offline > 1 ? 's' : ''} offline`);
@@ -36,9 +38,9 @@ export default function Dashboard() {
     const used = devices.filter(d => d.rackId === r.id).reduce((s, d) => s + (d.uHeight ?? 1), 0);
     return r.totalU > 0 && used / r.totalU > 0.9;
   });
-  if (highRacks.length > 0) alerts.push(`${highRacks.length} rack${highRacks.length > 1 ? 's' : ''} >90% full`);
+  if (highRacks.length > 0) alerts.push(`${highRacks.length} rack${highRacks.length > 1 ? 's' : ''} above 90% capacity`);
 
-  const recentDevices = [...devices].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
+  const recentDevices = [...devices].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6);
 
   function openAddNew(id: string) {
     setPrefillId(id);
@@ -47,106 +49,120 @@ export default function Dashboard() {
 
   return (
     <div className="fade-in">
-      {/* ─── Hero section ─── */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(0,212,255,0.06) 0%, rgba(0,255,148,0.04) 100%)',
-        border: '1px solid rgba(0,212,255,0.15)',
-        borderRadius: 16,
-        padding: '1.75rem 2rem',
-        marginBottom: '1.75rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1.25rem',
-      }}>
+      {/* ─── Page header ─── */}
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.02em' }}>
-            P-Pilot Dashboard
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Data center infrastructure management
-          </p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-sub">Data center infrastructure overview</p>
         </div>
-
-        <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
-          {/* Create QR button */}
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
           <button
-            onClick={() => { setPrefillId(undefined); setShowCreate(true); }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.6rem',
-              padding: '0.75rem 1.4rem',
-              borderRadius: 10,
-              border: '1.5px solid rgba(0,255,148,0.5)',
-              background: 'linear-gradient(135deg, rgba(0,255,148,0.15), rgba(0,255,148,0.05))',
-              color: '#00FF94',
-              fontWeight: 700, fontSize: '0.9rem',
-              cursor: 'pointer', transition: 'all 0.2s',
-            }}
-            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(0,255,148,0.25)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
-            onMouseOut={e  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
-          >
-            <QRCreateIcon size={18} />
-            Create QR
-          </button>
-
-          {/* Scan QR button */}
-          <button
+            className="btn-secondary"
             onClick={() => setShowScan(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.6rem',
-              padding: '0.75rem 1.4rem',
-              borderRadius: 10,
-              border: '1.5px solid rgba(0,212,255,0.5)',
-              background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.05))',
-              color: '#00D4FF',
-              fontWeight: 700, fontSize: '0.9rem',
-              cursor: 'pointer', transition: 'all 0.2s',
-            }}
-            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(0,212,255,0.25)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
-            onMouseOut={e  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
           >
-            <ScanIcon size={18} />
-            Scan QR
+            <ScanIcon size={14} /> Scan QR
+          </button>
+          <button
+            className="btn-primary"
+            onClick={() => { setPrefillId(undefined); setShowCreate(true); }}
+          >
+            <QRIcon size={14} /> Create QR
           </button>
         </div>
       </div>
 
-      {/* ─── Alerts ─── */}
-      {alerts.length > 0 && (
-        <div style={{ background: 'rgba(255,183,0,0.08)', border: '1px solid rgba(255,183,0,0.3)', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', color: '#ffb700', fontWeight: 700 }}>⚠ Alerts</span>
-          {alerts.map(a => <span key={a} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{a}</span>)}
+      {/* ─── Alert strip ─── */}
+      {alerts.length > 0 && !alertDismissed && (
+        <div className="alert-strip" style={{ marginBottom: '1.25rem' }}>
+          <WarnIcon size={14} />
+          <span style={{ color: '#f59e0b', fontWeight: 600, fontSize: '0.78rem' }}>Alerts</span>
+          {alerts.map(a => (
+            <span key={a} style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>· {a}</span>
+          ))}
+          <button
+            onClick={() => setAlertDismissed(true)}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0.25rem', fontSize: '0.9rem', lineHeight: 1 }}
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* ─── Stat cards ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard icon="🖥️" label="Total Devices" value={devices.length} sub={`${online} online`}   color="#00D4FF" onClick={() => navigate('devices')} />
-        <StatCard icon="🗄️" label="Racks"          value={racks.length}   sub={`${totalU}U total`}  color="#00FF94" onClick={() => navigate('racks')} />
-        <StatCard icon="🔌" label="Cables"          value={cables.length}  sub={`${activeC} active`} color="#a78bfa" onClick={() => navigate('cables')} />
-        <StatCard icon="⚠️" label="Offline"         value={offline}        sub="devices down"        color={offline > 0 ? '#ff4d4d' : '#4a5568'} onClick={() => navigate('devices')} />
-        <StatCard icon="📊" label="Rack Fill"       value={totalU > 0 ? `${Math.round(usedU / totalU * 100)}%` : '—'} sub={`${usedU}/${totalU}U`} color="#ffb700" onClick={() => navigate('racks')} />
+      {/* ─── Stat bar ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem', marginBottom: '1.75rem' }}>
+        <StatCard
+          label="Devices"
+          value={devices.length}
+          sub={`${online} online`}
+          accent="#3b82f6"
+          icon={<DeviceStatIcon />}
+          onClick={() => navigate('devices')}
+        />
+        <StatCard
+          label="Racks"
+          value={racks.length}
+          sub={`${totalU}U total`}
+          accent="#10b981"
+          icon={<RackStatIcon />}
+          onClick={() => navigate('racks')}
+        />
+        <StatCard
+          label="Cables"
+          value={cables.length}
+          sub={`${activeC} active`}
+          accent="#a78bfa"
+          icon={<CableStatIcon />}
+          onClick={() => navigate('cables')}
+        />
+        <StatCard
+          label="Offline"
+          value={offline}
+          sub="devices down"
+          accent={offline > 0 ? '#ef4444' : '#4a4a60'}
+          icon={<OfflineStatIcon active={offline > 0} />}
+          onClick={() => navigate('devices')}
+        />
+        <StatCard
+          label="Rack Fill"
+          value={`${fillPct}%`}
+          sub={`${usedU} / ${totalU}U`}
+          accent="#f59e0b"
+          icon={<FillStatIcon />}
+          onClick={() => navigate('racks')}
+        />
       </div>
 
-      {/* ─── Cards row ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Recent Devices</h3>
-            <button className="btn-secondary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem' }} onClick={() => navigate('devices')}>View all</button>
+      {/* ─── Content grid ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+
+        {/* Recent Devices */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Recent Devices</span>
+            <button className="btn-secondary" style={{ padding: '0.25rem 0.65rem', fontSize: '0.72rem' }} onClick={() => navigate('devices')}>View all</button>
           </div>
           {recentDevices.length === 0
             ? <Empty text="No devices yet" />
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            : <div>
                 {recentDevices.map(d => (
-                  <div key={d.id} onClick={() => navigate(`device/${d.id}`)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
-                    onMouseOver={e => (e.currentTarget.style.background = 'var(--bg-card-hover)')}
-                    onMouseOut={e  => (e.currentTarget.style.background = 'var(--bg-secondary)')}>
+                  <div
+                    key={d.id}
+                    onClick={() => navigate(`device/${d.id}`)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 1.25rem',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseOver={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                  >
                     <div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.type} · {d.serial}</div>
+                      <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{d.type} · {d.serial || 'no serial'}</div>
                     </div>
                     <StatusBadge status={d.status} />
                   </div>
@@ -155,40 +171,51 @@ export default function Dashboard() {
           }
         </div>
 
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Quick Actions</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {/* Quick Actions */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Quick Actions</span>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {[
-              { label: 'Add Device',   icon: '🖥️', target: 'devices'   },
-              { label: 'Add Rack',     icon: '🗄️', target: 'racks'     },
-              { label: 'Add Cable',    icon: '🔌', target: 'cables'    },
-              { label: 'QR Studio',    icon: '🏷️', target: 'qr-studio' },
-            ].map(({ label, icon, target }) => (
-              <button key={label} className="btn-secondary" style={{ justifyContent: 'flex-start', width: '100%' }} onClick={() => navigate(target)}>
-                <span>{icon}</span> {label}
+              { label: 'Add Device',  target: 'devices',   icon: <DeviceStatIcon /> },
+              { label: 'Add Rack',    target: 'racks',     icon: <RackStatIcon /> },
+              { label: 'Add Cable',   target: 'cables',    icon: <CableStatIcon /> },
+              { label: 'QR Studio',   target: 'qr-studio', icon: <QRIcon size={14} /> },
+            ].map(({ label, target, icon }) => (
+              <button
+                key={label}
+                className="btn-secondary"
+                style={{ justifyContent: 'flex-start', width: '100%', padding: '0.5rem 0.75rem' }}
+                onClick={() => navigate(target)}
+              >
+                {icon}
+                <span style={{ marginLeft: '0.25rem' }}>{label}</span>
               </button>
             ))}
           </div>
         </div>
 
+        {/* Rack Capacity */}
         {racks.length > 0 && (
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Rack Capacity</h3>
-              <button className="btn-secondary" style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem' }} onClick={() => navigate('racks')}>View all</button>
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Rack Capacity</span>
+              <button className="btn-secondary" style={{ padding: '0.25rem 0.65rem', fontSize: '0.72rem' }} onClick={() => navigate('racks')}>View all</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ padding: '0.85rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {racks.slice(0, 6).map(rack => {
                 const used = devices.filter(d => d.rackId === rack.id).reduce((s, d) => s + (d.uHeight ?? 1), 0);
                 const pct  = rack.totalU > 0 ? Math.min(100, Math.round(used / rack.totalU * 100)) : 0;
+                const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#3b82f6';
                 return (
                   <div key={rack.id} onClick={() => navigate(`rack/${rack.id}`)} style={{ cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{rack.name}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{used}/{rack.totalU}U · {pct}%</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{rack.name}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{used}/{rack.totalU}U · {pct}%</span>
                     </div>
-                    <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: pct > 90 ? '#ff4d4d' : pct > 70 ? '#ffb700' : 'linear-gradient(90deg,#00D4FF,#00FF94)', transition: 'width 0.5s ease' }} />
+                    <div className="cap-bar-track">
+                      <div className="cap-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
                     </div>
                   </div>
                 );
@@ -198,7 +225,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ─── Modals ─── */}
       {showCreate && (
         <CreateQRModal
           prefillId={prefillId}
@@ -216,16 +242,19 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon, label, value, sub, color, onClick }: { icon: string; label: string; value: string | number; sub: string; color: string; onClick?: () => void }) {
+function StatCard({ label, value, sub, accent, icon, onClick }: {
+  label: string; value: string | number; sub: string;
+  accent: string; icon: React.ReactNode; onClick?: () => void;
+}) {
   return (
-    <div className="stat-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-        <span style={{ fontSize: '1.25rem' }}>{icon}</span>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'block', marginTop: 2 }} />
+    <div className="stat-card" onClick={onClick}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem' }}>
+        <div style={{ color: 'var(--text-muted)' }}>{icon}</div>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: accent, display: 'block', marginTop: 2, flexShrink: 0 }} />
       </div>
-      <div style={{ fontSize: '1.75rem', fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '0.3rem' }}>{label}</div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{sub}</div>
+      <div style={{ fontSize: '1.6rem', fontWeight: 700, color: accent, lineHeight: 1, letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 500, marginTop: '0.3rem' }}>{label}</div>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{sub}</div>
     </div>
   );
 }
@@ -236,24 +265,80 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function Empty({ text }: { text: string }) {
-  return <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{text}</div>;
-}
-
-function QRCreateIcon({ size = 16 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/>
-      <path d="M16 16h2v2h-2z"/><path d="M20 16v2"/><path d="M16 20h4"/><path d="M12 3v4"/><path d="M12 12v.01"/><path d="M3 12h4"/>
-    </svg>
+    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+      {text}
+    </div>
   );
 }
 
-function ScanIcon({ size = 16 }) {
+function QRIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/>
+      <rect x="3" y="16" width="5" height="5" rx="1"/>
+      <path d="M16 16h2v2h-2z"/><path d="M20 16v2"/><path d="M16 20h4"/>
+      <path d="M12 3v4"/><path d="M12 12v.01"/><path d="M3 12h4"/>
+    </svg>
+  );
+}
+function ScanIcon({ size = 14 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
       <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
       <line x1="3" y1="12" x2="21" y2="12"/>
+    </svg>
+  );
+}
+function WarnIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+}
+function DeviceStatIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+  );
+}
+function RackStatIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+      <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+    </svg>
+  );
+}
+function CableStatIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9a2 2 0 0 0 2-2V5h12v2a2 2 0 0 0 4 0V3H2v2a2 2 0 0 0 2 2z"/>
+      <path d="M4 15a2 2 0 0 1 2 2v2h12v-2a2 2 0 0 1 4 0v2H2v-2a2 2 0 0 1 2-2z"/>
+      <line x1="12" y1="9" x2="12" y2="15"/>
+    </svg>
+  );
+}
+function OfflineStatIcon({ active }: { active: boolean }) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={active ? '#ef4444' : 'currentColor'} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+  );
+}
+function FillStatIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
   );
 }

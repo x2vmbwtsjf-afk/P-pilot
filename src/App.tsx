@@ -73,24 +73,31 @@ export default function App() {
       <Sidebar current={currentPage} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* Mobile header */}
         <div style={{
           display: 'none',
           alignItems: 'center',
           gap: '1rem',
           padding: '0.75rem 1rem',
           borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-secondary)',
+          background: 'var(--sidebar-bg)',
         }} id="mobile-header">
           <button
             onClick={() => setSidebarOpen(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', padding: 0 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0, display: 'flex' }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <span style={{ fontWeight: 700, fontSize: '1.1rem', background: 'linear-gradient(90deg,#00D4FF,#00FF94)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            P-Pilot
+          <span style={{
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            letterSpacing: '0.1em',
+            color: 'var(--text-primary)',
+          }}>
+            P-PILOT
           </span>
         </div>
 

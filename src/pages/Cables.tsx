@@ -28,7 +28,9 @@ export default function Cables() {
     const q = search.toLowerCase();
     const nearEnd = c.nearEnd || c.fromPort || '';
     const farEnd  = c.farEnd  || c.toPort   || '';
-    const matchQ = !q || c.label.toLowerCase().includes(q) || nearEnd.toLowerCase().includes(q) || farEnd.toLowerCase().includes(q) || (c.cableNumber ?? '').toLowerCase().includes(q) || (c.tech ?? '').toLowerCase().includes(q);
+    const matchQ = !q || c.label.toLowerCase().includes(q) || nearEnd.toLowerCase().includes(q) ||
+      farEnd.toLowerCase().includes(q) || (c.cableNumber ?? '').toLowerCase().includes(q) ||
+      (c.tech ?? '').toLowerCase().includes(q);
     return matchQ && (!filterStatus || c.status === filterStatus) && (!filterType || c.type === filterType);
   });
 
@@ -39,20 +41,28 @@ export default function Cables() {
     load();
   }
 
+  const hasFilters = search || filterStatus || filterType;
+
   return (
     <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Cables</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{cables.length} cable{cables.length !== 1 ? 's' : ''} in inventory</p>
+          <h1 className="page-title">Cables</h1>
+          <p className="page-sub">{cables.length} cable{cables.length !== 1 ? 's' : ''} in inventory</p>
         </div>
         <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true); }}>
           <PlusIcon /> Add Cable
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <input className="input" placeholder="Search label, near/far end, tech…" value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 300 }} />
+      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <input
+          className="input"
+          placeholder="Search label, near/far end, tech…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 280 }}
+        />
         <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ maxWidth: 140 }}>
           <option value="">All Status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -61,8 +71,8 @@ export default function Cables() {
           <option value="">All Types</option>
           {CABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        {(search || filterStatus || filterType) && (
-          <button className="btn-secondary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+        {hasFilters && (
+          <button className="btn-secondary" style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
             onClick={() => { setSearch(''); setFilterStatus(''); setFilterType(''); }}>
             Clear
           </button>
@@ -71,33 +81,41 @@ export default function Cables() {
 
       <div className="card" style={{ overflow: 'hidden' }}>
         {filtered.length === 0
-          ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {search || filterStatus || filterType ? 'No cables match filters' : 'No cables yet — add one!'}
-            </div>
+          ? <Empty text={hasFilters ? 'No cables match filters' : 'No cables yet — add one!'} />
           : (
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
-                  <tr><th>Label</th><th>Type</th><th>Length</th><th>Near End</th><th>Far End</th><th>Color</th><th>Tech</th><th>Status</th><th></th></tr>
+                  <tr>
+                    <th>Label</th>
+                    <th>Type</th>
+                    <th>Length</th>
+                    <th>Near End</th>
+                    <th>Far End</th>
+                    <th>Color</th>
+                    <th>Tech</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
                 </thead>
                 <tbody>
                   {filtered.map(c => (
                     <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`cable/${c.id}`)}>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.label}</div>
-                        {c.cableNumber && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c.cableNumber}</div>}
+                        {c.cableNumber && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: '0.1rem' }}>{c.cableNumber}</div>}
                       </td>
                       <td><span className="badge badge-blue">{c.type}</span></td>
-                      <td>{c.lengthM}m</td>
-                      <td style={{ fontSize: '0.8rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nearEnd || c.fromPort || '—'}</td>
-                      <td style={{ fontSize: '0.8rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.farEnd || c.toPort || '—'}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{c.lengthM}m</td>
+                      <td style={{ fontSize: '0.8rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nearEnd || c.fromPort || '—'}</td>
+                      <td style={{ fontSize: '0.8rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.farEnd || c.toPort || '—'}</td>
                       <td>
                         {c.color
                           ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <span style={{ width: 12, height: 12, borderRadius: '50%', background: COLOR_MAP[c.color] ?? '#888', border: '1px solid rgba(255,255,255,0.15)', display: 'inline-block', flexShrink: 0 }} />
+                              <span style={{ width: 10, height: 10, borderRadius: '50%', background: COLOR_MAP[c.color] ?? '#888', border: '1px solid rgba(255,255,255,0.1)', display: 'inline-block', flexShrink: 0 }} />
                               <span style={{ fontSize: '0.75rem' }}>{c.color}</span>
                             </div>
-                          : '—'
+                          : <span style={{ color: 'var(--text-muted)' }}>—</span>
                         }
                       </td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.tech || '—'}</td>
@@ -105,7 +123,7 @@ export default function Cables() {
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.3rem' }}>
                           <button className="btn-icon" onClick={() => { setEditing(c); setShowModal(true); }}><EditIcon /></button>
-                          <button className="btn-icon" style={{ color: '#ff4d4d', borderColor: 'rgba(255,77,77,0.3)' }} onClick={() => handleDelete(c.id)}><TrashIcon /></button>
+                          <button className="btn-icon red" onClick={() => handleDelete(c.id)}><TrashIcon /></button>
                         </div>
                       </td>
                     </tr>
@@ -135,17 +153,17 @@ export default function Cables() {
 
 function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClose: () => void; onSave: (c: Cable) => void }) {
   const [form, setForm] = useState({
-    label:       initial?.label                             ?? '',
-    labelName:   initial?.labelName                        ?? '',
-    type:        initial?.type                              ?? 'cat6' as CableType,
-    lengthM:     initial?.lengthM                          ?? 1,
-    nearEnd:     initial?.nearEnd ?? initial?.fromPort     ?? '',
-    farEnd:      initial?.farEnd  ?? initial?.toPort       ?? '',
-    status:      initial?.status                           ?? 'active' as CableStatus,
-    color:       initial?.color                            ?? '',
-    tech:        initial?.tech                             ?? '',
-    cableNumber: initial?.cableNumber                      ?? '',
-    notes:       initial?.notes                            ?? '',
+    label:       initial?.label                         ?? '',
+    labelName:   initial?.labelName                     ?? '',
+    type:        initial?.type                          ?? 'cat6' as CableType,
+    lengthM:     initial?.lengthM                       ?? 1,
+    nearEnd:     initial?.nearEnd ?? initial?.fromPort  ?? '',
+    farEnd:      initial?.farEnd  ?? initial?.toPort    ?? '',
+    status:      initial?.status                        ?? 'active' as CableStatus,
+    color:       initial?.color                         ?? '',
+    tech:        initial?.tech                          ?? '',
+    cableNumber: initial?.cableNumber                   ?? '',
+    notes:       initial?.notes                         ?? '',
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -176,37 +194,44 @@ function CableModal({ initial, onClose, onSave }: { initial: Cable | null; onClo
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
-        <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Cable' : 'Add Cable'}</h2>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-            <Field label="Label / Name *"><input className="input" required value={form.label} onChange={set('label')} placeholder="e.g. CAT6 Patch #1" autoFocus /></Field>
-            <Field label="Number / ID"><input className="input" value={form.cableNumber} onChange={set('cableNumber')} placeholder="CBL-001" /></Field>
-            <Field label="Label Name (print tag)" style={{ gridColumn: 'span 2' }}><input className="input" value={form.labelName} onChange={set('labelName')} placeholder="e.g. srv-01:eth0 → sw-01:Gi1/0/1" /></Field>
-            <Field label="Type">
-              <select className="input" value={form.type} onChange={set('type')}>
-                {CABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Status">
-              <select className="input" value={form.status} onChange={set('status')}>
-                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="Length (m)"><input className="input" type="number" min={0.1} step={0.1} value={form.lengthM} onChange={set('lengthM')} /></Field>
-            <Field label="Color">
-              <select className="input" value={form.color} onChange={set('color')}>
-                <option value="">None</option>
-                {Object.keys(COLOR_MAP).map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
-            <Field label="Near End"><input className="input" value={form.nearEnd} onChange={set('nearEnd')} placeholder="SW1:Gi1/0/1" /></Field>
-            <Field label="Far End"><input className="input" value={form.farEnd} onChange={set('farEnd')} placeholder="SRV1:NIC0" /></Field>
-            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+        <div className="modal-header">
+          <h2 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{initial ? 'Edit Cable' : 'Add Cable'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+        <form onSubmit={submit}>
+          <div className="modal-body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <Field label="Label / Name *"><input className="input" required value={form.label} onChange={set('label')} placeholder="e.g. CAT6 Patch #1" autoFocus /></Field>
+              <Field label="Number / ID"><input className="input" value={form.cableNumber} onChange={set('cableNumber')} placeholder="CBL-001" /></Field>
+              <Field label="Label Name (print tag)" style={{ gridColumn: 'span 2' }}>
+                <input className="input" value={form.labelName} onChange={set('labelName')} placeholder="e.g. srv-01:eth0 → sw-01:Gi1/0/1" />
+              </Field>
+              <Field label="Type">
+                <select className="input" value={form.type} onChange={set('type')}>
+                  {CABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Status">
+                <select className="input" value={form.status} onChange={set('status')}>
+                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <Field label="Length (m)"><input className="input" type="number" min={0.1} step={0.1} value={form.lengthM} onChange={set('lengthM')} /></Field>
+              <Field label="Color">
+                <select className="input" value={form.color} onChange={set('color')}>
+                  <option value="">None</option>
+                  {Object.keys(COLOR_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Near End"><input className="input" value={form.nearEnd} onChange={set('nearEnd')} placeholder="SW1:Gi1/0/1" /></Field>
+              <Field label="Far End"><input className="input" value={form.farEnd} onChange={set('farEnd')} placeholder="SRV1:NIC0" /></Field>
+              <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+            </div>
+            <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} /></Field>
           </div>
-          <Field label="Notes"><textarea className="input" value={form.notes} onChange={set('notes')} rows={2} style={{ resize: 'vertical' }} /></Field>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">Save</button>
+            <button type="submit" className="btn-primary">Save Cable</button>
           </div>
         </form>
       </div>
@@ -220,6 +245,9 @@ function Field({ label, children, style }: { label: string; children: React.Reac
 function CableStatusBadge({ status }: { status: string }) {
   const cls = status === 'active' ? 'badge-online' : status === 'faulty' ? 'badge-offline' : 'badge-gray';
   return <span className={`badge ${cls}`}>{status}</span>;
+}
+function Empty({ text }: { text: string }) {
+  return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{text}</div>;
 }
 function PlusIcon()  { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
 function EditIcon()  { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>; }

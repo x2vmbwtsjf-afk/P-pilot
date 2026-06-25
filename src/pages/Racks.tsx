@@ -37,75 +37,92 @@ export default function Racks() {
 
   return (
     <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Racks</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{racks.length} rack{racks.length !== 1 ? 's' : ''} registered</p>
+          <h1 className="page-title">Racks</h1>
+          <p className="page-sub">{racks.length} rack{racks.length !== 1 ? 's' : ''} registered</p>
         </div>
         <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true); }}>
           <PlusIcon /> Add Rack
         </button>
       </div>
 
-      <input className="input" placeholder="Search by name, number, or location…" value={search} onChange={e => setSearch(e.target.value)}
-        style={{ marginBottom: '1.25rem', maxWidth: 340 }} />
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          className="input"
+          placeholder="Search by name, number, or location…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 340 }}
+        />
+      </div>
 
-      {filtered.length === 0
-        ? <Empty text={search ? 'No racks match your search' : 'No racks yet — add one!'} />
-        : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-            {filtered.map(rack => {
-              const rackDevices = devices.filter(d => d.rackId === rack.id);
-              const usedU = rackDevices.reduce((s, d) => s + (d.uHeight ?? 1), 0);
-              const pct   = rack.totalU > 0 ? Math.min(100, Math.round(usedU / rack.totalU * 100)) : 0;
-              const statusColor = rack.status === 'maintenance' ? '#ffb700' : rack.status === 'decommissioned' ? '#ff4d4d' : '#00FF94';
-              return (
-                <div key={rack.id} className="card" style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => navigate(`rack/${rack.id}`)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{rack.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        {rack.location}{rack.row ? ` · Row ${rack.row}` : ''}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.35rem' }} onClick={e => e.stopPropagation()}>
-                      <button className="btn-icon" onClick={() => { setEditing(rack); setShowModal(true); }}><EditIcon /></button>
-                      <button className="btn-icon" style={{ color: '#ff4d4d', borderColor: 'rgba(255,77,77,0.3)' }} onClick={() => handleDelete(rack.id)}><TrashIcon /></button>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Capacity</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{usedU}/{rack.totalU}U · {pct}%</span>
-                    </div>
-                    <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: pct > 90 ? '#ff4d4d' : pct > 70 ? '#ffb700' : 'linear-gradient(90deg,#00D4FF,#00FF94)', transition: 'width 0.4s ease' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span className="badge badge-blue">{rack.totalU}U</span>
-                    <span className="badge badge-gray">{rackDevices.length} devices</span>
-                    {rack.status && rack.status !== 'active' && (
-                      <span className="badge" style={{ background: `${statusColor}20`, color: statusColor, border: `1px solid ${statusColor}40` }}>{rack.status}</span>
-                    )}
-                    {pct > 90 && <span className="badge badge-offline">Critical</span>}
-                  </div>
-
-                  {(rack.manufacturer || rack.tech || rack.powerAmps) && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      {rack.manufacturer && <span>{rack.manufacturer}</span>}
-                      {rack.powerAmps && <span>⚡ {rack.powerAmps}A</span>}
-                      {rack.tech && <span>👤 {rack.tech}</span>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )
-      }
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {filtered.length === 0
+          ? <Empty text={search ? 'No racks match your search' : 'No racks yet — add one!'} />
+          : (
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rack</th>
+                    <th>Location</th>
+                    <th>Size</th>
+                    <th>Devices</th>
+                    <th style={{ minWidth: 140 }}>Capacity</th>
+                    <th>Status</th>
+                    <th>Tech</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(rack => {
+                    const rackDevices = devices.filter(d => d.rackId === rack.id);
+                    const usedU = rackDevices.reduce((s, d) => s + (d.uHeight ?? 1), 0);
+                    const pct   = rack.totalU > 0 ? Math.min(100, Math.round(usedU / rack.totalU * 100)) : 0;
+                    const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#3b82f6';
+                    const statusCls = rack.status === 'maintenance' ? 'badge-standby' : rack.status === 'decommissioned' ? 'badge-offline' : 'badge-online';
+                    return (
+                      <tr key={rack.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`rack/${rack.id}`)}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rack.name}</div>
+                          {rack.rackNumber && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: '0.1rem' }}>#{rack.rackNumber}</div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.8rem' }}>{rack.location}</div>
+                          {rack.room && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{rack.room}{rack.row ? ` · Row ${rack.row}` : ''}</div>}
+                        </td>
+                        <td style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 500 }}>{rack.totalU}U</td>
+                        <td>{rackDevices.length}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div className="cap-bar-track" style={{ flex: 1 }}>
+                              <div className="cap-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', minWidth: '2.5rem', textAlign: 'right' }}>{pct}%</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${statusCls}`}>{rack.status ?? 'active'}</span>
+                        </td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rack.tech || '—'}</td>
+                        <td onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '0.3rem' }}>
+                            <button className="btn-icon" onClick={() => { setEditing(rack); setShowModal(true); }}><EditIcon /></button>
+                            <button className="btn-icon red" onClick={() => handleDelete(rack.id)}><TrashIcon /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </div>
 
       {showModal && (
         <RackModal
@@ -166,33 +183,38 @@ function RackModal({ initial, onClose, onSave }: { initial: Rack | null; onClose
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
-        <h2 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{initial ? 'Edit Rack' : 'Add Rack'}</h2>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-            <Field label="Rack Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Rack A1" autoFocus /></Field>
-            <Field label="Rack Number"><input className="input" value={form.rackNumber} onChange={set('rackNumber')} placeholder="e.g. A1" /></Field>
-            <Field label="Location / Data Center"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. DC-West" /></Field>
-            <Field label="Room"><input className="input" value={form.room} onChange={set('room')} placeholder="e.g. Server Room 1" /></Field>
-            <Field label="Row"><input className="input" value={form.row} onChange={set('row')} placeholder="e.g. A" /></Field>
-            <Field label="Total Units (U)"><input className="input" type="number" min={1} max={100} value={form.totalU} onChange={set('totalU')} /></Field>
-            <Field label="Status">
-              <select className="input" value={form.status} onChange={set('status')}>
-                {RACK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="Manufacturer">
-              <select className="input" value={form.manufacturer} onChange={set('manufacturer')}>
-                <option value="">None</option>
-                {MANUFACTURERS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </Field>
-            <Field label="Power (A)"><input className="input" type="number" min={0} step={0.1} value={form.powerAmps} onChange={set('powerAmps')} placeholder="e.g. 20" /></Field>
-            <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+        <div className="modal-header">
+          <h2 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{initial ? 'Edit Rack' : 'Add Rack'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+        <form onSubmit={submit}>
+          <div className="modal-body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <Field label="Rack Name *"><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Rack A1" autoFocus /></Field>
+              <Field label="Rack Number"><input className="input" value={form.rackNumber} onChange={set('rackNumber')} placeholder="e.g. A1" /></Field>
+              <Field label="Location / Data Center"><input className="input" value={form.location} onChange={set('location')} placeholder="e.g. DC-West" /></Field>
+              <Field label="Room"><input className="input" value={form.room} onChange={set('room')} placeholder="e.g. Server Room 1" /></Field>
+              <Field label="Row"><input className="input" value={form.row} onChange={set('row')} placeholder="e.g. A" /></Field>
+              <Field label="Total Units (U)"><input className="input" type="number" min={1} max={100} value={form.totalU} onChange={set('totalU')} /></Field>
+              <Field label="Status">
+                <select className="input" value={form.status} onChange={set('status')}>
+                  {RACK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <Field label="Manufacturer">
+                <select className="input" value={form.manufacturer} onChange={set('manufacturer')}>
+                  <option value="">None</option>
+                  {MANUFACTURERS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </Field>
+              <Field label="Power (A)"><input className="input" type="number" min={0} step={0.1} value={form.powerAmps} onChange={set('powerAmps')} placeholder="e.g. 20" /></Field>
+              <Field label="Tech (responsible)"><input className="input" value={form.tech} onChange={set('tech')} placeholder="Technician name" /></Field>
+            </div>
+            <Field label="Notes / Description"><textarea className="input" value={form.description} onChange={set('description')} rows={2} /></Field>
           </div>
-          <Field label="Notes / Description"><textarea className="input" value={form.description} onChange={set('description')} rows={2} style={{ resize: 'vertical' }} /></Field>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">Save</button>
+            <button type="submit" className="btn-primary">Save Rack</button>
           </div>
         </form>
       </div>
