@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
 import QRCode from 'qrcode';
 import { putDevice, putRack, putCable, getRacks, generateId } from '../db';
 import type { Rack } from '../types';
@@ -22,6 +22,29 @@ function buildUrl(kind: ItemKind, id: string) {
   return `${BASE}#/${segment}/${id}`;
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+// Isolated so QR canvas only re-renders when qrDataUrl actually changes
+const QRCodeImage = memo(function QRCodeImage({ qrDataUrl }: { qrDataUrl: string | null }) {
+  if (!qrDataUrl) {
+    return (
+      <div style={{ width: 136, height: 136, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>…</div>
+    );
+  }
+  return (
+    <div style={{ background: '#fff', padding: 8, borderRadius: 8, boxShadow: '0 2px 16px rgba(0,0,0,0.4)' }}>
+      <img src={qrDataUrl} alt="QR" style={{ display: 'block', width: 136, height: 136 }} />
+    </div>
+  );
+});
+
 export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
   const { toast } = useToast();
   const id = useRef(prefillId ?? generateId()).current;
@@ -33,22 +56,34 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
   const [racks, setRacks] = useState<Rack[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const set = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [k]: e.target.value }));
+  // Debounce kind so QR generation doesn't fire until the user stops changing it;
+  // also delays the initial canvas work until after the modal finishes opening.
+  const debouncedKind = useDebounce(form.kind, 300);
+
+  // Stable handler factory — empty deps because it only closes over setForm (stable)
+  const set = useCallback(
+    (k: keyof typeof form) =>
+      (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+        setForm(f => ({ ...f, [k]: e.target.value })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   useEffect(() => { getRacks().then(r => setRacks(r ?? [])); }, []);
 
+  // Only regenerates QR when the debounced kind changes — not on every keystroke
   useEffect(() => {
-    const url = buildUrl(form.kind, id);
+    const url = buildUrl(debouncedKind, id);
     QRCode.toDataURL(url, {
       width: 240, margin: 1,
       color: { dark: '#0a0a0f', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     }).then(setQrDataUrl).catch(() => {});
-  }, [form.kind, id]);
+  }, [debouncedKind, id]);
 
-  async function save(): Promise<boolean> {
+  const previewUrl = useMemo(() => buildUrl(form.kind, id), [form.kind, id]);
+
+  const save = useCallback(async (): Promise<boolean> => {
     if (!form.name.trim()) { toast('Name is required', 'error'); return false; }
     setSaving(true);
     const now = Date.now();
@@ -92,24 +127,27 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
     } finally {
       setSaving(false);
     }
-  }
+  }, [form, id, racks, toast, onSaved]);
 
-  async function handleSaveOnly() {
+  const handleSaveOnly = useCallback(async () => {
     const ok = await save();
     if (ok) onClose();
-  }
+  }, [save, onClose]);
 
-  async function handleSavePrint() {
+  const handleSavePrint = useCallback(async () => {
     const ok = await save();
     if (!ok || !qrDataUrl) return;
     printLabel(form.name, form.serial, buildUrl(form.kind, id), qrDataUrl, id);
     onClose();
-  }
+  }, [save, qrDataUrl, form.name, form.serial, form.kind, id, onClose]);
 
-  const previewUrl = buildUrl(form.kind, id);
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => { if (e.target === e.currentTarget) onClose(); },
+    [onClose]
+  );
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-box" style={{ maxWidth: 640 }}>
         <div className="modal-header">
           <h2 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>Create QR Label</h2>
@@ -162,12 +200,7 @@ export default function CreateQRModal({ prefillId, onClose, onSaved }: Props) {
           {/* Live QR preview */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', minWidth: 156 }}>
             <span className="section-label" style={{ marginBottom: '0.35rem' }}>Live Preview</span>
-            {qrDataUrl
-              ? <div style={{ background: '#fff', padding: 8, borderRadius: 8, boxShadow: '0 2px 16px rgba(0,0,0,0.4)' }}>
-                  <img src={qrDataUrl} alt="QR" style={{ display: 'block', width: 136, height: 136 }} />
-                </div>
-              : <div style={{ width: 136, height: 136, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>…</div>
-            }
+            <QRCodeImage qrDataUrl={qrDataUrl} />
             {form.name && (
               <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500, maxWidth: 156, wordBreak: 'break-word' }}>
                 {form.name}
